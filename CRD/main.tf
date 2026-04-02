@@ -140,7 +140,6 @@ resource "proxmox_virtual_environment_vm" "crd_wazuh" {
 
   disk {
     datastore_id = "local-lvm"
-    import_from  = proxmox_virtual_environment_download_file.ubuntu_jammy.id
     interface    = "virtio0"
     iothread     = true
     discard      = "on"
