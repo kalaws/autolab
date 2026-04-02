@@ -172,7 +172,7 @@ resource "proxmox_virtual_environment_vm" "crd_wazuh" {
 
 # Field worker laptop
 resource "proxmox_virtual_environment_vm" "crd_field_laptop" {
-  name      = "LAB-CRD-field_laptop"
+  name      = "LAB-CRD-field-laptop"
   node_name = "pve"
 
   clone {
@@ -204,7 +204,7 @@ resource "proxmox_virtual_environment_vm" "crd_field_laptop" {
 
 # Sweden office workstation
 resource "proxmox_virtual_environment_vm" "crd_office_ws" {
-  name      = "LAB-CRD-office_ws"
+  name      = "LAB-CRD-office-ws"
   node_name = "pve"
 
   clone {
