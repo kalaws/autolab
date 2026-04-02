@@ -9,8 +9,9 @@ terraform {
 # Provider is configured using terraform.tfvars
 provider "proxmox" {
   endpoint = var.virtual_environment_endpoint
-  insecure = true
   api_token = var.virtual_environment_api_token
+
+  insecure = true  # Use only for development purposes. For production use, set up certificates.
 }
 
 
