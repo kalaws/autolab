@@ -50,7 +50,7 @@ resource "proxmox_virtual_environment_vm" "ubuntu_jammy_template" {
   }
 
   network_device {
-    bridge = var.bridge_autolab
+    bridge = var.bridge_autolab_wan
   }
 
   # Cloud-init: krävs för att kunna logga in
