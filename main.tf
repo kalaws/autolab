@@ -6,13 +6,8 @@ terraform {
     }
   }
 }
-# Provider is configured using terraform.tfvars
-provider "proxmox" {
-  endpoint = var.virtual_environment_endpoint
-  insecure = true
-  api_token = var.virtual_environment_api_token
-}
-
+# Provider is configured using environment args
+provider "proxmox" {}
 
 
 
@@ -55,7 +50,7 @@ resource "proxmox_virtual_environment_vm" "ubuntu_jammy_template" {
   }
 
   network_device {
-    bridge = "vnet1"
+    bridge = var.bridge_autolab
   }
 
   # Cloud-init: krävs för att kunna logga in
