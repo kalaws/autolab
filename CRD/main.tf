@@ -22,14 +22,14 @@ resource "proxmox_virtual_environment_network_linux_bridge" "crd_internal" {
 # ============================================
 # 1. Ladda ner Ubuntu Jammy cloud image
 # ============================================
-resource "proxmox_virtual_environment_download_file" "ubuntu_jammy" {
-  content_type = "import"
-  datastore_id = "local"
-  node_name    = "pve"
-  url          = "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
-  file_name    = "jammy-server-cloudimg-amd64.qcow2"
-  overwrite    = true
-}
+#resource "proxmox_virtual_environment_download_file" "ubuntu_jammy" {
+#  content_type = "import"
+#  datastore_id = "local"
+#  node_name    = "pve"
+#  url          = "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
+#  file_name    = "jammy-server-cloudimg-amd64.qcow2"
+#  overwrite    = true
+#}
 
 # ============================================
 # 2. Skapa template från cloud image
@@ -50,7 +50,7 @@ resource "proxmox_virtual_environment_vm" "ubuntu_jammy_template" {
 
   disk {
     datastore_id = "local-lvm"
-    import_from  = proxmox_virtual_environment_download_file.ubuntu_jammy.id
+    import_from  = "local:import/jammy-server-cloudimg-amd64.qcow2"
     interface    = "virtio0"
     iothread     = true
     discard      = "on"
