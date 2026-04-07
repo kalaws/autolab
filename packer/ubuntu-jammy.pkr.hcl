@@ -17,9 +17,11 @@ source "proxmox-iso" "ubuntu_jammy" {
   vm_name              = "ubuntu-jammy-packer"
   template_description = "Ubuntu Jammy med qemu-guest-agent – byggd av Packer"
 
-  iso_file         = var.iso_file
-  iso_storage_pool = "local"
-  unmount_iso      = true
+  boot_iso {
+    iso_file         = var.iso_file
+    iso_storage_pool = "local"
+    unmount          = true
+  }
 
   # Cloud-init seed ISO (NoCloud datasource)
   additional_iso_files {
