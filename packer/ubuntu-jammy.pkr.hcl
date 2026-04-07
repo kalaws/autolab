@@ -23,13 +23,14 @@ source "proxmox-iso" "ubuntu_jammy" {
     unmount          = true
   }
 
-  # Packer serverar user-data och meta-data via inbyggd HTTP-server
-  http_content = {
-    "/user-data" = templatefile("${path.root}/cloud-init/user-data.tpl", {
+  # Montera user-data och meta-data som cidata-ISO
+  cd_content = {
+    "user-data" = templatefile("${path.root}/cloud-init/user-data.tpl", {
       ssh_public_key = trimspace(file(var.ssh_public_key_file))
     })
-    "/meta-data" = ""
+    "meta-data" = ""
   }
+  cd_label = "cidata"
 
   machine  = "q35"
   bios     = "ovmf"
