@@ -35,7 +35,7 @@ resource "terraform_data" "apply_network_config" {
 # ============================================
 data "proxmox_virtual_environment_vms" "packer_template" {
   node_name = "pve"
-  filters {
+  filter {
     name   = "name"
     values = ["ubuntu-jammy-packer"]
   }
