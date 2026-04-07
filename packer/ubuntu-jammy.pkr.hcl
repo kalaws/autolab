@@ -36,9 +36,17 @@ source "proxmox-iso" "ubuntu_jammy" {
     unmount          = true
   }
 
+  machine  = "q35"
+  bios     = "ovmf"
   cpu_type = "host"
   cores    = 1
   memory   = 1024
+
+  efi_config {
+    efi_storage_pool  = "local-lvm"
+    pre_enrolled_keys = false
+    efi_type          = "4m"
+  }
 
   disks {
     disk_size    = "10G"
@@ -53,7 +61,7 @@ source "proxmox-iso" "ubuntu_jammy" {
 
   qemu_agent = true
 
-  # Boota från Ubuntu ISO (ide2), sedan disk
+  # Boota från Ubuntu ISO, sedan disk
   boot = "order=ide2;virtio0"
 
   # Autoinstall triggas via kernel-param
