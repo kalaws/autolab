@@ -65,9 +65,10 @@ source "proxmox-iso" "ubuntu_jammy" {
   boot = "order=ide2;virtio0"
 
   # Autoinstall triggas via GRUB command-line
-  boot_wait = "15s"
+  # boot_wait måste vara tillräckligt lång för OVMF-initialisering + GRUB-meny
+  boot_wait = "25s"
   boot_command = [
-    "c<wait3>",
+    "c<wait5>",
     "linux /casper/vmlinuz autoinstall ds=nocloud\\;seedfrom=/cdrom/ ---<enter><wait5>",
     "initrd /casper/initrd<enter><wait5>",
     "boot<enter>"
