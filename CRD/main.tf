@@ -156,7 +156,9 @@ resource "terraform_data" "setup_vpn_gateway" {
          grep -q "net.ipv4.ip_forward=1" /etc/sysctl.conf || echo "net.ipv4.ip_forward=1" | sudo tee -a /etc/sysctl.conf && \
          sudo iptables -t nat -C POSTROUTING -s 10.10.50.0/24 -o $WAN_IF -j MASQUERADE 2>/dev/null || \
            sudo iptables -t nat -A POSTROUTING -s 10.10.50.0/24 -o $WAN_IF -j MASQUERADE && \
-         sudo apt-get install -y iptables-persistent && \
+         echo "iptables-persistent iptables-persistent/autosave_v4 boolean true" | sudo debconf-set-selections && \
+         echo "iptables-persistent iptables-persistent/autosave_v6 boolean false" | sudo debconf-set-selections && \
+         sudo DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent && \
          sudo netfilter-persistent save'
     EOT
   }
