@@ -19,6 +19,16 @@ resource "proxmox_virtual_environment_network_linux_bridge" "crd_internal" {
   autostart = true
 }
 
+# Proxmox kräver att nätverkskonfigurationen tillämpas efter att en bridge
+# skapats, annars är den inte aktiv. Motsvarar "Apply Configuration" i UI:t.
+resource "terraform_data" "apply_network_config" {
+  depends_on = [proxmox_virtual_environment_network_linux_bridge.crd_internal]
+
+  provisioner "local-exec" {
+    command = "curl -sf -k -X PUT \"$PROXMOX_VE_ENDPOINT/api2/json/nodes/pve/network\" -H \"Authorization: PVEAPIToken=$PROXMOX_VE_API_TOKEN\""
+  }
+}
+
 # ============================================
 # 1. Ladda ner Ubuntu Jammy cloud image
 # ============================================
@@ -86,6 +96,7 @@ resource "proxmox_virtual_environment_vm" "ubuntu_jammy_template" {
 resource "proxmox_virtual_environment_vm" "crd_vpn" {
   name      = "LAB-CRD-VPN"
   node_name = "pve"
+  depends_on = [terraform_data.apply_network_config]
 
   clone {
     vm_id = proxmox_virtual_environment_vm.ubuntu_jammy_template.id
@@ -129,7 +140,8 @@ resource "proxmox_virtual_environment_vm" "crd_vpn" {
 resource "proxmox_virtual_environment_vm" "crd_wazuh" {
   name      = "LAB-CRD-Wazuh"
   node_name = "pve"
-  ipv4_addresses = "10.10.50.2"
+  
+  depends_on = [terraform_data.apply_network_config]
   clone {
     vm_id = proxmox_virtual_environment_vm.ubuntu_jammy_template.id
   }
@@ -206,7 +218,7 @@ resource "proxmox_virtual_environment_vm" "crd_field_laptop" {
 resource "proxmox_virtual_environment_vm" "crd_office_ws" {
   name      = "LAB-CRD-office-ws"
   node_name = "pve"
-  ipv4_addresses = "10.10.50.3"
+  depends_on = [terraform_data.apply_network_config]
   clone {
     vm_id = proxmox_virtual_environment_vm.ubuntu_jammy_template.id
   }
