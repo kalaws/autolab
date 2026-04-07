@@ -29,67 +29,9 @@ resource "terraform_data" "apply_network_config" {
   }
 }
 
-# ============================================
-# 1. Ladda ner Ubuntu Jammy cloud image
-# ============================================
-#resource "proxmox_virtual_environment_download_file" "ubuntu_jammy" {
-#  content_type = "import"
-#  datastore_id = "local"
-#  node_name    = "pve"
-#  url          = "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
-#  file_name    = "jammy-server-cloudimg-amd64.qcow2"
-#  overwrite    = true
-#}
 
 # ============================================
-# 2. Skapa template från cloud image
-# ============================================
-resource "proxmox_virtual_environment_vm" "ubuntu_jammy_template" {
-  name      = "ubuntu-jammy-template"
-  node_name = "pve"
-  template  = true
-  started   = false
-
-  cpu {
-    cores = 1
-  }
-
-  memory {
-    dedicated = 1024
-  }
-
-  disk {
-    datastore_id = "local-lvm"
-    import_from  = "local:import/jammy-server-cloudimg-amd64.qcow2"
-    interface    = "virtio0"
-    iothread     = true
-    discard      = "on"
-    size         = 10
-  }
-
-  network_device {
-    bridge = var.bridge_autolab_wan
-  }
-
-  # Cloud-init: krävs för att kunna logga in
-  initialization {
-    ip_config {
-      ipv4 {
-        address = "dhcp"
-      }
-    }
-  }
-
-  # Krävs för att QEMU guest agent ska fungera
-  agent {
-    enabled = true
-  }
-
-  serial_device {}
-}
-
-# ============================================
-# 3. Klona till faktiska VM:ar
+# 2. Klona till faktiska VM:ar
 # ============================================
 
 # WireGuard VPN – har WAN + intern bridge och agerar NAT-gateway för det interna nätet
@@ -160,9 +102,9 @@ resource "terraform_data" "setup_vpn_gateway" {
            sudo iptables -t nat -A POSTROUTING -s 10.10.50.0/24 -o $WAN_IF -j MASQUERADE && \
          echo "iptables-persistent iptables-persistent/autosave_v4 boolean true" | sudo debconf-set-selections && \
          echo "iptables-persistent iptables-persistent/autosave_v6 boolean false" | sudo debconf-set-selections && \
+         printf "interface=eth1\nbind-interfaces\ndhcp-range=10.10.50.10,10.10.50.100,255.255.255.0,24h\ndhcp-option=option:router,10.10.50.1\ndhcp-option=option:dns-server,8.8.8.8,1.1.1.1\n" | sudo tee /etc/dnsmasq.d/crd-internal.conf && \
          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent dnsmasq && \
          sudo netfilter-persistent save && \
-         printf "interface=eth1\nbind-interfaces\ndhcp-range=10.10.50.10,10.10.50.100,255.255.255.0,24h\ndhcp-option=option:router,10.10.50.1\ndhcp-option=option:dns-server,8.8.8.8,1.1.1.1\n" | sudo tee /etc/dnsmasq.d/crd-internal.conf && \
          sudo systemctl enable --now dnsmasq'
     EOT
   }
