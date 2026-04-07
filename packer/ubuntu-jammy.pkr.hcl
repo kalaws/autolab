@@ -63,7 +63,7 @@ source "proxmox-iso" "ubuntu_jammy" {
   boot_command = [
     "e<wait2>",
     "<down><down><end>",
-    " autoinstall ds=nocloud-net\\;seedfrom=http://{{ .HTTPIP }}:{{ .HTTPPort }}/",
+    " autoinstall ip=dhcp ds=nocloud-net\\;seedfrom=http://{{ .HTTPIP }}:{{ .HTTPPort }}/",
     "<f10>"
   ]
 
