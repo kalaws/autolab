@@ -92,7 +92,7 @@ resource "proxmox_virtual_environment_vm" "ubuntu_jammy_template" {
 # 3. Klona till faktiska VM:ar
 # ============================================
 
-# WireGuard VPN
+# WireGuard VPN – har WAN + intern bridge och agerar NAT-gateway för det interna nätet
 resource "proxmox_virtual_environment_vm" "crd_vpn" {
   name      = "LAB-CRD-VPN"
   node_name = "pve"
@@ -127,7 +127,7 @@ resource "proxmox_virtual_environment_vm" "crd_vpn" {
       }
     }
 
-    #user account konfigureras i lokal fil på Proxmox-host (/var/lib/vz/snippets/cloud-config.yaml) 
+    #user account konfigureras i lokal fil på Proxmox-host (/var/lib/vz/snippets/cloud-config.yaml)
     user_data_file_id = "local:snippets/cloud-config.yaml"
   }
 
@@ -136,11 +136,37 @@ resource "proxmox_virtual_environment_vm" "crd_vpn" {
   }
 }
 
+# Konfigurera crd_vpn som NAT-gateway för det interna nätet (10.10.50.0/24).
+# Övriga interna VM:ar sätter 10.10.50.1 som gateway och får därmed internetaccess
+# via VPN-VM:en, vilket gör att cloud-init kan installera qemu-guest-agent automatiskt.
+resource "terraform_data" "setup_vpn_gateway" {
+  depends_on = [proxmox_virtual_environment_vm.crd_vpn]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      echo "Väntar på SSH till crd_vpn (10.10.50.1)..."
+      until ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes \
+        ${var.vm_ssh_user}@10.10.50.1 true 2>/dev/null; do sleep 5; done
+
+      echo "Sätter upp NAT-gateway på crd_vpn..."
+      ssh -o StrictHostKeyChecking=no -o BatchMode=yes ${var.vm_ssh_user}@10.10.50.1 \
+        'WAN_IF=$(ip route | awk "/default/ {print \$5; exit}") && \
+         sudo sysctl -w net.ipv4.ip_forward=1 && \
+         grep -q "net.ipv4.ip_forward=1" /etc/sysctl.conf || echo "net.ipv4.ip_forward=1" | sudo tee -a /etc/sysctl.conf && \
+         sudo iptables -t nat -C POSTROUTING -s 10.10.50.0/24 -o $WAN_IF -j MASQUERADE 2>/dev/null || \
+           sudo iptables -t nat -A POSTROUTING -s 10.10.50.0/24 -o $WAN_IF -j MASQUERADE && \
+         sudo apt-get install -y iptables-persistent && \
+         sudo netfilter-persistent save'
+    EOT
+  }
+}
+
 # Wazuh server
 resource "proxmox_virtual_environment_vm" "crd_wazuh" {
   name      = "LAB-CRD-Wazuh"
   node_name = "pve"
-  depends_on = [terraform_data.apply_network_config]
+  depends_on = [terraform_data.setup_vpn_gateway]
+
   clone {
     vm_id = proxmox_virtual_environment_vm.ubuntu_jammy_template.id
   }
@@ -174,32 +200,8 @@ resource "proxmox_virtual_environment_vm" "crd_wazuh" {
     user_data_file_id = "local:snippets/cloud-config.yaml"
   }
 
-  # Steg 1: disabled så att apply inte hänger – agenten installeras av terraform_data nedan
   agent {
-    enabled = false
-  }
-
-}
-
-# Installera qemu-guest-agent på VM:ar utan WAN-access via SSH från controlnode.
-# Steg 2: efter att detta kört, ändra agent.enabled = true och kör apply igen.
-resource "terraform_data" "install_qemu_agent" {
-  depends_on = [
-    proxmox_virtual_environment_vm.crd_wazuh,
-    proxmox_virtual_environment_vm.crd_office_ws,
-  ]
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      for IP in 10.10.50.2 10.10.50.3; do
-        echo "Väntar på SSH till $IP..."
-        until ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes \
-          ${var.vm_ssh_user}@$IP true 2>/dev/null; do sleep 5; done
-        echo "Installerar qemu-guest-agent på $IP..."
-        ssh -o StrictHostKeyChecking=no -o BatchMode=yes ${var.vm_ssh_user}@$IP \
-          'sudo apt-get install -y qemu-guest-agent && sudo systemctl enable --now qemu-guest-agent'
-      done
-    EOT
+    enabled = true
   }
 }
 
@@ -224,23 +226,21 @@ resource "proxmox_virtual_environment_vm" "crd_field_laptop" {
       }
     }
 
-    #user account konfigureras i lokal fil på Proxmox-host (/var/lib/vz/snippets/cloud-config.yaml) 
+    #user account konfigureras i lokal fil på Proxmox-host (/var/lib/vz/snippets/cloud-config.yaml)
     user_data_file_id = "local:snippets/cloud-config.yaml"
   }
 
-  # Steg 1: disabled – aktiveras till true efter att terraform_data.install_qemu_agent kört
   agent {
-    enabled = false
+    enabled = true
   }
-
 }
-
 
 # Sweden office workstation
 resource "proxmox_virtual_environment_vm" "crd_office_ws" {
   name      = "LAB-CRD-office-ws"
   node_name = "pve"
-  depends_on = [terraform_data.apply_network_config]
+  depends_on = [terraform_data.setup_vpn_gateway]
+
   clone {
     vm_id = proxmox_virtual_environment_vm.ubuntu_jammy_template.id
   }
@@ -249,10 +249,9 @@ resource "proxmox_virtual_environment_vm" "crd_office_ws" {
     dedicated = 1024
   }
 
-
   network_device {
     bridge = proxmox_virtual_environment_network_linux_bridge.crd_internal.name  # Internal LAN
-  }  
+  }
 
   # Överskrid cloud-init per VM
   initialization {
@@ -263,13 +262,11 @@ resource "proxmox_virtual_environment_vm" "crd_office_ws" {
       }
     }
 
-    #user account konfigureras i lokal fil på Proxmox-host (/var/lib/vz/snippets/cloud-config.yaml) 
+    #user account konfigureras i lokal fil på Proxmox-host (/var/lib/vz/snippets/cloud-config.yaml)
     user_data_file_id = "local:snippets/cloud-config.yaml"
   }
 
-  # Steg 1: disabled – aktiveras till true efter att terraform_data.install_qemu_agent kört
   agent {
-    enabled = false
+    enabled = true
   }
-
 }
