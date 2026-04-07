@@ -35,8 +35,8 @@ source "proxmox-iso" "ubuntu_jammy" {
   }
 
   cpu_type = "host"
-  cores    = 2
-  memory   = 2048
+  cores    = 1
+  memory   = 1024
 
   disks {
     disk_size    = "10G"
@@ -48,6 +48,8 @@ source "proxmox-iso" "ubuntu_jammy" {
     bridge = var.bridge_wan
     model  = "virtio"
   }
+
+  qemu_agent = true
 
   # Autoinstall triggas via kernel-param
   boot_wait = "5s"
