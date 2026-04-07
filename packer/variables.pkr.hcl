@@ -34,5 +34,5 @@ variable "ssh_user" {
 variable "ssh_private_key_file" {
   type        = string
   description = "Sökväg till SSH-privat nyckel"
-  default     = "~/.ssh/id_rsa"
+  default     = "~/.ssh/id_ed25519"
 }
