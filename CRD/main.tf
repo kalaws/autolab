@@ -25,7 +25,7 @@ resource "terraform_data" "apply_network_config" {
   depends_on = [proxmox_virtual_environment_network_linux_bridge.crd_internal]
 
   provisioner "local-exec" {
-    command = "curl -sf -k -X PUT \"$PROXMOX_VE_ENDPOINT/api2/json/nodes/pve/network\" -H \"Authorization: PVEAPIToken=$PROXMOX_VE_API_TOKEN\""
+    command = "curl -k -X PUT \"$PROXMOX_VE_ENDPOINT/api2/json/nodes/pve/network\" -H \"Authorization: PVEAPIToken=$PROXMOX_VE_API_TOKEN\""
   }
 }
 
