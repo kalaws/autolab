@@ -59,8 +59,6 @@ source "proxmox-iso" "ubuntu_jammy" {
   # Inget SSH – allt sköts av autoinstall + Proxmox API
   communicator = "none"
 
-  # Vänta tills VM stänger av sig (autoinstall kör poweroff)
-  shutdown_timeout = "30m"
 }
 
 build {
