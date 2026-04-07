@@ -24,13 +24,17 @@ source "proxmox-iso" "ubuntu_jammy" {
   }
 
   # Montera user-data och meta-data som cidata-ISO
-  cd_content = {
-    "user-data" = templatefile("${path.root}/cloud-init/user-data.tpl", {
-      ssh_public_key = trimspace(file(var.ssh_public_key_file))
-    })
-    "meta-data" = ""
+  additional_iso_files {
+    cd_content = {
+      "user-data" = templatefile("${path.root}/cloud-init/user-data.tpl", {
+        ssh_public_key = trimspace(file(var.ssh_public_key_file))
+      })
+      "meta-data" = ""
+    }
+    cd_label         = "cidata"
+    iso_storage_pool = "local"
+    unmount          = true
   }
-  cd_label = "cidata"
 
   machine  = "q35"
   bios     = "ovmf"
