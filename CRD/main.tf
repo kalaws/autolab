@@ -154,7 +154,7 @@ resource "proxmox_virtual_environment_vm" "crd_wazuh" {
   initialization {
     ip_config {
       ipv4 {
-        address = "dhcp"
+        address = "10.10.50.2/24"
       }
     }
 
@@ -224,7 +224,7 @@ resource "proxmox_virtual_environment_vm" "crd_office_ws" {
   initialization {
     ip_config {
       ipv4 {
-        address = "dhcp"
+        address = "10.10.50.3/24"
       }
     }
 
