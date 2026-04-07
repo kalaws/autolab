@@ -59,12 +59,12 @@ source "proxmox-iso" "ubuntu_jammy" {
   boot = "order=ide2;virtio0"
 
   # boot_wait måste vara tillräckligt lång för OVMF-initialisering + GRUB-meny
-  boot_wait = "25s"
+  boot_wait = "10s"
   boot_command = [
-    "c<wait5>",
-    "linux /casper/vmlinuz autoinstall ds=nocloud-net\\;seedfrom=http://{{ .HTTPIP }}:{{ .HTTPPort }}/ ---<enter><wait5>",
-    "initrd /casper/initrd<enter><wait5>",
-    "boot<enter>"
+    "e<wait2>",
+    "<down><down><end>",
+    " autoinstall ds=nocloud-net\\;seedfrom=http://{{ .HTTPIP }}:{{ .HTTPPort }}/",
+    "<f10>"
   ]
 
   # Inget SSH – allt sköts av autoinstall + Proxmox API
