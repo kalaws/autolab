@@ -17,7 +17,7 @@ variable "proxmox_token_secret" {
 variable "iso_file" {
   type        = string
   description = "ISO-fil i Proxmox storage, t.ex. local:iso/ubuntu-22.04.5-live-server-amd64.iso (PKR_VAR_iso_file)"
-  default     = "local:iso/ubuntu-22.04.4-live-server-amd64.iso"
+  default     = "local:iso/ubuntu-24.04.4-live-server-amd64.iso"
 }
 
 variable "bridge_wan" {
