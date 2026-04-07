@@ -168,6 +168,10 @@ resource "proxmox_virtual_environment_vm" "crd_field_laptop" {
     dedicated = 1024
   }
 
+  network_device {
+    bridge = var.bridge_autolab_wan
+  }
+
   # Överskrid cloud-init per VM
   initialization {
     ip_config {
