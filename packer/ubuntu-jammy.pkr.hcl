@@ -23,17 +23,12 @@ source "proxmox-iso" "ubuntu_jammy" {
     unmount          = true
   }
 
-  # Cloud-init seed ISO (NoCloud datasource)
-  additional_iso_files {
-    cd_label = "cidata"
-    cd_content = {
-      "user-data" = templatefile("${path.root}/cloud-init/user-data.tpl", {
-        ssh_public_key = trimspace(file(var.ssh_public_key_file))
-      })
-      "meta-data" = ""
-    }
-    iso_storage_pool = "local"
-    unmount          = true
+  # Packer serverar user-data och meta-data via inbyggd HTTP-server
+  http_content = {
+    "/user-data" = templatefile("${path.root}/cloud-init/user-data.tpl", {
+      ssh_public_key = trimspace(file(var.ssh_public_key_file))
+    })
+    "/meta-data" = ""
   }
 
   machine  = "q35"
@@ -61,15 +56,13 @@ source "proxmox-iso" "ubuntu_jammy" {
 
   qemu_agent = true
 
-  # Boota från Ubuntu ISO, sedan disk
   boot = "order=ide2;virtio0"
 
-  # Autoinstall triggas via GRUB command-line
   # boot_wait måste vara tillräckligt lång för OVMF-initialisering + GRUB-meny
   boot_wait = "25s"
   boot_command = [
     "c<wait5>",
-    "linux /casper/vmlinuz autoinstall ds=nocloud ---<enter><wait5>",
+    "linux /casper/vmlinuz autoinstall ds=nocloud-net\\;seedfrom=http://{{ .HTTPIP }}:{{ .HTTPPort }}/ ---<enter><wait5>",
     "initrd /casper/initrd<enter><wait5>",
     "boot<enter>"
   ]
