@@ -79,9 +79,6 @@ resource "proxmox_virtual_environment_vm" "crd_vpn" {
         address = "10.10.50.1/24"
       }
     }
-
-    #user account konfigureras i lokal fil på Proxmox-host (/var/lib/vz/snippets/cloud-config.yaml)
-    user_data_file_id = "local:snippets/cloud-config.yaml"
   }
 
   stop_on_destroy = true
