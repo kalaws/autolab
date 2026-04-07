@@ -6,6 +6,16 @@ autoinstall:
   keyboard:
     layout: se
 
+  network:
+    version: 2
+    ethernets:
+      eth0:
+        dhcp4: true
+
+  apt:
+    geoip: false
+    preserve_sources_list: false
+
   identity:
     hostname: ubuntu-jammy-packer
     username: ubuntu
