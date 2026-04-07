@@ -28,7 +28,7 @@ source "proxmox-iso" "ubuntu_jammy" {
     cd_label = "cidata"
     cd_content = {
       "user-data" = templatefile("${path.root}/cloud-init/user-data.tpl", {
-        ssh_public_key = file(var.ssh_public_key_file)
+        ssh_public_key = trimspace(file(var.ssh_public_key_file))
       })
       "meta-data" = ""
     }
