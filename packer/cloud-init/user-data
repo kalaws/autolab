@@ -1,0 +1,28 @@
+#cloud-config
+autoinstall:
+  version: 1
+
+  locale: en_US.UTF-8
+  keyboard:
+    layout: se
+
+  identity:
+    hostname: ubuntu-jammy-packer
+    username: ubuntu
+    # Lösenord inaktiverat – åtkomst sker via SSH-nyckel efter kloning
+    password: "!"
+
+  ssh:
+    install-server: true
+    allow-pw: false
+
+  packages:
+    - qemu-guest-agent
+
+  late-commands:
+    - systemctl enable qemu-guest-agent
+    # Rensa cloud-init state så det körs om vid nästa boot (kloning)
+    - cloud-init clean --logs
+
+  power_state:
+    mode: poweroff

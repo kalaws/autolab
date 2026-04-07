@@ -7,41 +7,62 @@ packer {
   }
 }
 
-# Klonar från den Terraform-skapade base-templaten och installerar
-# qemu-guest-agent så att alla framtida kloner har den inbakad.
-source "proxmox-clone" "ubuntu_jammy" {
+source "proxmox-iso" "ubuntu_jammy" {
   proxmox_url              = var.proxmox_url
   username                 = var.proxmox_token_id
   token                    = var.proxmox_token_secret
   insecure_skip_tls_verify = true
   node                     = "pve"
 
-  clone_vm_id = var.base_template_id
-  vm_name     = "ubuntu-jammy-base"
+  vm_name              = "ubuntu-jammy-packer"
+  template_description = "Ubuntu Jammy med qemu-guest-agent – byggd av Packer"
 
-  # Starta på WAN-bridge så Packer kan nå VM:en via SSH
-  network_adapters {
-    bridge = var.bridge_wan
+  iso_file         = var.iso_file
+  iso_storage_pool = "local"
+  unmount_iso      = true
+
+  # Cloud-init seed ISO (NoCloud datasource)
+  additional_iso_files {
+    cd_label = "cidata"
+    cd_files = [
+      "${path.root}/cloud-init/user-data",
+      "${path.root}/cloud-init/meta-data",
+    ]
+    iso_storage_pool = "local"
+    unmount          = true
   }
 
-  # Cloud-init kör automatiskt och sätter upp SSH
-  ssh_username        = var.ssh_user
-  ssh_private_key_file = var.ssh_private_key_file
-  ssh_timeout         = "5m"
+  cpu_type = "host"
+  cores    = 2
+  memory   = 2048
 
-  template_name        = "ubuntu-jammy-packer"
-  template_description = "Ubuntu Jammy med qemu-guest-agent – byggd av Packer"
+  disk {
+    disk_size    = "10G"
+    storage_pool = "local-lvm"
+    type         = "virtio"
+  }
+
+  network_adapters {
+    bridge = var.bridge_wan
+    model  = "virtio"
+  }
+
+  # Autoinstall triggas via kernel-param
+  boot_wait = "5s"
+  boot_command = [
+    "<wait>e<wait>",
+    "<down><down><down><end>",
+    " autoinstall ds=nocloud",
+    "<f10>"
+  ]
+
+  # Inget SSH – allt sköts av autoinstall + Proxmox API
+  communicator = "none"
+
+  # Vänta tills VM stänger av sig (autoinstall kör poweroff)
+  shutdown_timeout = "30m"
 }
 
 build {
-  sources = ["source.proxmox-clone.ubuntu_jammy"]
-
-  provisioner "shell" {
-    inline = [
-      "sudo apt-get install -y qemu-guest-agent",
-      "sudo systemctl enable qemu-guest-agent",
-      # Rensa cloud-init state så det körs om vid nästa boot (kloning)
-      "sudo cloud-init clean",
-    ]
-  }
+  sources = ["source.proxmox-iso.ubuntu_jammy"]
 }

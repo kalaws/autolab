@@ -14,25 +14,14 @@ variable "proxmox_token_secret" {
   description = "API-token secret UUID (PKR_VAR_proxmox_token_secret)"
 }
 
-variable "base_template_id" {
-  type        = number
-  description = "VM-ID för base-templaten att klona från"
+variable "iso_file" {
+  type        = string
+  description = "ISO-fil i Proxmox storage, t.ex. local:iso/ubuntu-22.04.5-live-server-amd64.iso (PKR_VAR_iso_file)"
+  default     = "local:iso/ubuntu-22.04.4-live-server-amd64.iso"
 }
 
 variable "bridge_wan" {
   type        = string
   description = "WAN-bridge"
   default     = "vnet1"
-}
-
-variable "ssh_user" {
-  type        = string
-  description = "SSH-användare i VM:en"
-  default     = "ubuntu"
-}
-
-variable "ssh_private_key_file" {
-  type        = string
-  description = "Sökväg till SSH-privat nyckel"
-  default     = "~/.ssh/id_ed25519"
 }
