@@ -69,7 +69,7 @@ source "proxmox-iso" "ubuntu_jammy" {
   boot_wait = "25s"
   boot_command = [
     "c<wait5>",
-    "linux /casper/vmlinuz autoinstall ds=nocloud\\;seedfrom=/cdrom/ ---<enter><wait5>",
+    "linux /casper/vmlinuz autoinstall ds=nocloud ---<enter><wait5>",
     "initrd /casper/initrd<enter><wait5>",
     "boot<enter>"
   ]
