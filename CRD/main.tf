@@ -131,6 +131,8 @@ resource "proxmox_virtual_environment_vm" "crd_vpn" {
     user_data_file_id = "local:snippets/cloud-config.yaml"
   }
 
+  stop_on_destroy = true
+
   agent {
     enabled = true
   }
@@ -204,6 +206,8 @@ resource "proxmox_virtual_environment_vm" "crd_wazuh" {
     user_data_file_id = "local:snippets/cloud-config.yaml"
   }
 
+  stop_on_destroy = true
+
   agent {
     enabled = true
   }
@@ -233,6 +237,8 @@ resource "proxmox_virtual_environment_vm" "crd_field_laptop" {
     #user account konfigureras i lokal fil på Proxmox-host (/var/lib/vz/snippets/cloud-config.yaml)
     user_data_file_id = "local:snippets/cloud-config.yaml"
   }
+
+  stop_on_destroy = true
 
   agent {
     enabled = true
@@ -268,6 +274,8 @@ resource "proxmox_virtual_environment_vm" "crd_office_ws" {
     #user account konfigureras i lokal fil på Proxmox-host (/var/lib/vz/snippets/cloud-config.yaml)
     user_data_file_id = "local:snippets/cloud-config.yaml"
   }
+
+  stop_on_destroy = true
 
   agent {
     enabled = true
