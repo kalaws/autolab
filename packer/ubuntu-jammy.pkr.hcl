@@ -59,7 +59,7 @@ source "proxmox-iso" "ubuntu_jammy" {
   boot = "order=ide2;virtio0"
 
   # boot_wait måste vara tillräckligt lång för OVMF-initialisering + GRUB-meny
-  boot_wait = "10s"
+  boot_wait = "20s"
   boot_command = [
     "e<wait2>",
     "<down><down><end>",
