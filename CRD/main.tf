@@ -174,13 +174,34 @@ resource "proxmox_virtual_environment_vm" "crd_wazuh" {
     user_data_file_id = "local:snippets/cloud-config.yaml"
   }
 
+  # Steg 1: disabled så att apply inte hänger – agenten installeras av terraform_data nedan
   agent {
-    enabled = true
+    enabled = false
   }
 
 }
 
+# Installera qemu-guest-agent på VM:ar utan WAN-access via SSH från controlnode.
+# Steg 2: efter att detta kört, ändra agent.enabled = true och kör apply igen.
+resource "terraform_data" "install_qemu_agent" {
+  depends_on = [
+    proxmox_virtual_environment_vm.crd_wazuh,
+    proxmox_virtual_environment_vm.crd_office_ws,
+  ]
 
+  provisioner "local-exec" {
+    command = <<-EOT
+      for IP in 10.10.50.2 10.10.50.3; do
+        echo "Väntar på SSH till $IP..."
+        until ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes \
+          ${var.vm_ssh_user}@$IP true 2>/dev/null; do sleep 5; done
+        echo "Installerar qemu-guest-agent på $IP..."
+        ssh -o StrictHostKeyChecking=no -o BatchMode=yes ${var.vm_ssh_user}@$IP \
+          'sudo apt-get install -y qemu-guest-agent && sudo systemctl enable --now qemu-guest-agent'
+      done
+    EOT
+  }
+}
 
 # Field worker laptop
 resource "proxmox_virtual_environment_vm" "crd_field_laptop" {
@@ -207,8 +228,9 @@ resource "proxmox_virtual_environment_vm" "crd_field_laptop" {
     user_data_file_id = "local:snippets/cloud-config.yaml"
   }
 
+  # Steg 1: disabled – aktiveras till true efter att terraform_data.install_qemu_agent kört
   agent {
-    enabled = true
+    enabled = false
   }
 
 }
@@ -245,8 +267,9 @@ resource "proxmox_virtual_environment_vm" "crd_office_ws" {
     user_data_file_id = "local:snippets/cloud-config.yaml"
   }
 
+  # Steg 1: disabled – aktiveras till true efter att terraform_data.install_qemu_agent kört
   agent {
-    enabled = true
+    enabled = false
   }
 
 }
