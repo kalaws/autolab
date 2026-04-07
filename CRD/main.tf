@@ -129,7 +129,7 @@ resource "proxmox_virtual_environment_vm" "crd_vpn" {
 resource "proxmox_virtual_environment_vm" "crd_wazuh" {
   name      = "LAB-CRD-Wazuh"
   node_name = "pve"
-
+  ipv4_addresses = "10.10.50.2/24"
   clone {
     vm_id = proxmox_virtual_environment_vm.ubuntu_jammy_template.id
   }
@@ -206,7 +206,7 @@ resource "proxmox_virtual_environment_vm" "crd_field_laptop" {
 resource "proxmox_virtual_environment_vm" "crd_office_ws" {
   name      = "LAB-CRD-office-ws"
   node_name = "pve"
-
+  ipv4_addresses = "10.10.50.3/24"
   clone {
     vm_id = proxmox_virtual_environment_vm.ubuntu_jammy_template.id
   }
