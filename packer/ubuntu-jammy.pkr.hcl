@@ -36,7 +36,7 @@ source "proxmox-iso" "ubuntu_jammy" {
   cores    = 2
   memory   = 2048
 
-  disk {
+  disks {
     disk_size    = "10G"
     storage_pool = "local-lvm"
     type         = "virtio"
