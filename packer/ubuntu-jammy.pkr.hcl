@@ -64,13 +64,13 @@ source "proxmox-iso" "ubuntu_jammy" {
   # Boota från Ubuntu ISO, sedan disk
   boot = "order=ide2;virtio0"
 
-  # Autoinstall triggas via kernel-param
-  boot_wait = "5s"
+  # Autoinstall triggas via GRUB command-line
+  boot_wait = "15s"
   boot_command = [
-    "<wait>e<wait>",
-    "<down><down><down><end>",
-    " autoinstall ds=nocloud",
-    "<f10>"
+    "c<wait3>",
+    "linux /casper/vmlinuz autoinstall ds=nocloud\\;seedfrom=/cdrom/ ---<enter><wait5>",
+    "initrd /casper/initrd<enter><wait5>",
+    "boot<enter>"
   ]
 
   # Inget SSH – allt sköts av autoinstall + Proxmox API
