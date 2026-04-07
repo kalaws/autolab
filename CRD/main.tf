@@ -136,9 +136,9 @@ resource "proxmox_virtual_environment_vm" "crd_vpn" {
   }
 }
 
-# Konfigurera crd_vpn som NAT-gateway för det interna nätet (10.10.50.0/24).
-# Övriga interna VM:ar sätter 10.10.50.1 som gateway och får därmed internetaccess
-# via VPN-VM:en, vilket gör att cloud-init kan installera qemu-guest-agent automatiskt.
+# Konfigurera crd_vpn som NAT-gateway och DHCP-server för det interna nätet.
+# dnsmasq delar ut IP (10.10.50.10–100), gateway (10.10.50.1) och DNS automatiskt,
+# vilket gör att cloud-init på interna VM:ar kan installera qemu-guest-agent.
 resource "terraform_data" "setup_vpn_gateway" {
   depends_on = [proxmox_virtual_environment_vm.crd_vpn]
 
@@ -149,7 +149,7 @@ resource "terraform_data" "setup_vpn_gateway" {
       until ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes \
         ${var.vm_ssh_user}@$VPN_WAN_IP true 2>/dev/null; do sleep 5; done
 
-      echo "Sätter upp NAT-gateway på crd_vpn..."
+      echo "Sätter upp NAT + DHCP på crd_vpn..."
       ssh -o StrictHostKeyChecking=no -o BatchMode=yes ${var.vm_ssh_user}@$VPN_WAN_IP \
         'WAN_IF=$(ip route | awk "/default/ {print \$5; exit}") && \
          sudo sysctl -w net.ipv4.ip_forward=1 && \
@@ -158,8 +158,10 @@ resource "terraform_data" "setup_vpn_gateway" {
            sudo iptables -t nat -A POSTROUTING -s 10.10.50.0/24 -o $WAN_IF -j MASQUERADE && \
          echo "iptables-persistent iptables-persistent/autosave_v4 boolean true" | sudo debconf-set-selections && \
          echo "iptables-persistent iptables-persistent/autosave_v6 boolean false" | sudo debconf-set-selections && \
-         sudo DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent && \
-         sudo netfilter-persistent save'
+         sudo DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent dnsmasq && \
+         sudo netfilter-persistent save && \
+         printf "interface=eth1\nbind-interfaces\ndhcp-range=10.10.50.10,10.10.50.100,255.255.255.0,24h\ndhcp-option=option:router,10.10.50.1\ndhcp-option=option:dns-server,8.8.8.8,1.1.1.1\n" | sudo tee /etc/dnsmasq.d/crd-internal.conf && \
+         sudo systemctl enable --now dnsmasq'
     EOT
   }
 }
@@ -194,8 +196,7 @@ resource "proxmox_virtual_environment_vm" "crd_wazuh" {
   initialization {
     ip_config {
       ipv4 {
-        address = "10.10.50.2/24"
-        gateway = "10.10.50.1"
+        address = "dhcp"
       }
     }
 
@@ -260,8 +261,7 @@ resource "proxmox_virtual_environment_vm" "crd_office_ws" {
   initialization {
     ip_config {
       ipv4 {
-        address = "10.10.50.3/24"
-        gateway = "10.10.50.1"
+        address = "dhcp"
       }
     }
 
