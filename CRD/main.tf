@@ -144,12 +144,13 @@ resource "terraform_data" "setup_vpn_gateway" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      echo "Väntar på SSH till crd_vpn (10.10.50.1)..."
+      VPN_WAN_IP="${proxmox_virtual_environment_vm.crd_vpn.ipv4_addresses[1][0]}"
+      echo "Väntar på SSH till crd_vpn ($VPN_WAN_IP)..."
       until ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes \
-        ${var.vm_ssh_user}@10.10.50.1 true 2>/dev/null; do sleep 5; done
+        ${var.vm_ssh_user}@$VPN_WAN_IP true 2>/dev/null; do sleep 5; done
 
       echo "Sätter upp NAT-gateway på crd_vpn..."
-      ssh -o StrictHostKeyChecking=no -o BatchMode=yes ${var.vm_ssh_user}@10.10.50.1 \
+      ssh -o StrictHostKeyChecking=no -o BatchMode=yes ${var.vm_ssh_user}@$VPN_WAN_IP \
         'WAN_IF=$(ip route | awk "/default/ {print \$5; exit}") && \
          sudo sysctl -w net.ipv4.ip_forward=1 && \
          grep -q "net.ipv4.ip_forward=1" /etc/sysctl.conf || echo "net.ipv4.ip_forward=1" | sudo tee -a /etc/sysctl.conf && \
