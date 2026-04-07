@@ -51,6 +51,9 @@ source "proxmox-iso" "ubuntu_jammy" {
 
   qemu_agent = true
 
+  # Boota från Ubuntu ISO (ide2), sedan disk
+  boot = "order=ide2;virtio0"
+
   # Autoinstall triggas via kernel-param
   boot_wait = "5s"
   boot_command = [
