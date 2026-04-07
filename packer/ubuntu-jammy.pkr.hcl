@@ -26,10 +26,12 @@ source "proxmox-iso" "ubuntu_jammy" {
   # Cloud-init seed ISO (NoCloud datasource)
   additional_iso_files {
     cd_label = "cidata"
-    cd_files = [
-      "${path.root}/cloud-init/user-data",
-      "${path.root}/cloud-init/meta-data",
-    ]
+    cd_content = {
+      "user-data" = templatefile("${path.root}/cloud-init/user-data.tpl", {
+        ssh_public_key = file(var.ssh_public_key_file)
+      })
+      "meta-data" = ""
+    }
     iso_storage_pool = "local"
     unmount          = true
   }

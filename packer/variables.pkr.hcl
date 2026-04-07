@@ -20,6 +20,12 @@ variable "iso_file" {
   default     = "local:iso/ubuntu-24.04.4-live-server-amd64.iso"
 }
 
+variable "ssh_public_key_file" {
+  type        = string
+  description = "Sökväg till SSH-publik nyckel (PKR_VAR_ssh_public_key_file)"
+  default     = "~/.ssh/id_ed25519.pub"
+}
+
 variable "bridge_wan" {
   type        = string
   description = "WAN-bridge"

@@ -31,17 +31,28 @@ resource "terraform_data" "apply_network_config" {
 
 
 # ============================================
+# 1. Slå upp Packer-byggt template
+# ============================================
+data "proxmox_virtual_environment_vms" "packer_template" {
+  node_name = "pve"
+  filters {
+    name   = "name"
+    values = ["ubuntu-jammy-packer"]
+  }
+}
+
+# ============================================
 # 2. Klona till faktiska VM:ar
 # ============================================
 
-# WireGuard VPN – har WAN + intern bridge och agerar NAT-gateway för det interna nätet
+# WireGuard VPN – har WAN + intern bridge
 resource "proxmox_virtual_environment_vm" "crd_vpn" {
   name      = "LAB-CRD-VPN"
   node_name = "pve"
   depends_on = [terraform_data.apply_network_config]
 
   clone {
-    vm_id = proxmox_virtual_environment_vm.ubuntu_jammy_template.id
+    vm_id = data.proxmox_virtual_environment_vms.packer_template.vms[0].vm_id
   }
 
   memory {
@@ -80,9 +91,9 @@ resource "proxmox_virtual_environment_vm" "crd_vpn" {
   }
 }
 
-# Konfigurera crd_vpn som NAT-gateway och DHCP-server för det interna nätet.
-# dnsmasq delar ut IP (10.10.50.10–100), gateway (10.10.50.1) och DNS automatiskt,
-# vilket gör att cloud-init på interna VM:ar kan installera qemu-guest-agent.
+# Konfigurera dnsmasq på crd_vpn som DHCP-server för det interna nätet. 
+# Krävs för att VM:ar på internt nät ska vara åtkomstbara.
+# Delar ut IP (10.10.50.10–100), gateway (10.10.50.1) och DNS automatiskt.
 resource "terraform_data" "setup_vpn_gateway" {
   depends_on = [proxmox_virtual_environment_vm.crd_vpn]
 
@@ -93,18 +104,10 @@ resource "terraform_data" "setup_vpn_gateway" {
       until ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes \
         ${var.vm_ssh_user}@$VPN_WAN_IP true 2>/dev/null; do sleep 5; done
 
-      echo "Sätter upp NAT + DHCP på crd_vpn..."
+      echo "Sätter upp DHCP på crd_vpn..."
       ssh -o StrictHostKeyChecking=no -o BatchMode=yes ${var.vm_ssh_user}@$VPN_WAN_IP \
-        'WAN_IF=$(ip route | awk "/default/ {print \$5; exit}") && \
-         sudo sysctl -w net.ipv4.ip_forward=1 && \
-         grep -q "net.ipv4.ip_forward=1" /etc/sysctl.conf || echo "net.ipv4.ip_forward=1" | sudo tee -a /etc/sysctl.conf && \
-         sudo iptables -t nat -C POSTROUTING -s 10.10.50.0/24 -o $WAN_IF -j MASQUERADE 2>/dev/null || \
-           sudo iptables -t nat -A POSTROUTING -s 10.10.50.0/24 -o $WAN_IF -j MASQUERADE && \
-         echo "iptables-persistent iptables-persistent/autosave_v4 boolean true" | sudo debconf-set-selections && \
-         echo "iptables-persistent iptables-persistent/autosave_v6 boolean false" | sudo debconf-set-selections && \
-         printf "interface=eth1\nbind-interfaces\ndhcp-range=10.10.50.10,10.10.50.100,255.255.255.0,24h\ndhcp-option=option:router,10.10.50.1\ndhcp-option=option:dns-server,8.8.8.8,1.1.1.1\n" | sudo tee /etc/dnsmasq.d/crd-internal.conf && \
-         sudo DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent dnsmasq && \
-         sudo netfilter-persistent save && \
+        'printf "interface=eth1\nbind-interfaces\ndhcp-range=10.10.50.10,10.10.50.100,255.255.255.0,24h\ndhcp-option=option:router,10.10.50.1\ndhcp-option=option:dns-server,8.8.8.8,1.1.1.1\n" | sudo tee /etc/dnsmasq.d/crd-internal.conf && \
+         sudo DEBIAN_FRONTEND=noninteractive apt-get install -y dnsmasq && \
          sudo systemctl enable --now dnsmasq'
     EOT
   }
@@ -117,7 +120,7 @@ resource "proxmox_virtual_environment_vm" "crd_wazuh" {
   depends_on = [terraform_data.setup_vpn_gateway]
 
   clone {
-    vm_id = proxmox_virtual_environment_vm.ubuntu_jammy_template.id
+    vm_id = data.proxmox_virtual_environment_vms.packer_template.vms[0].vm_id
   }
 
   memory {
@@ -143,9 +146,6 @@ resource "proxmox_virtual_environment_vm" "crd_wazuh" {
         address = "dhcp"
       }
     }
-
-    #user account konfigureras i lokal fil på Proxmox-host (/var/lib/vz/snippets/cloud-config.yaml)
-    user_data_file_id = "local:snippets/cloud-config.yaml"
   }
 
   stop_on_destroy = true
@@ -161,7 +161,7 @@ resource "proxmox_virtual_environment_vm" "crd_field_laptop" {
   node_name = "pve"
 
   clone {
-    vm_id = proxmox_virtual_environment_vm.ubuntu_jammy_template.id
+    vm_id = data.proxmox_virtual_environment_vms.packer_template.vms[0].vm_id
   }
 
   memory {
@@ -175,9 +175,6 @@ resource "proxmox_virtual_environment_vm" "crd_field_laptop" {
         address = "dhcp"
       }
     }
-
-    #user account konfigureras i lokal fil på Proxmox-host (/var/lib/vz/snippets/cloud-config.yaml)
-    user_data_file_id = "local:snippets/cloud-config.yaml"
   }
 
   stop_on_destroy = true
@@ -194,7 +191,7 @@ resource "proxmox_virtual_environment_vm" "crd_office_ws" {
   depends_on = [terraform_data.setup_vpn_gateway]
 
   clone {
-    vm_id = proxmox_virtual_environment_vm.ubuntu_jammy_template.id
+    vm_id = data.proxmox_virtual_environment_vms.packer_template.vms[0].vm_id
   }
 
   memory {
@@ -212,9 +209,6 @@ resource "proxmox_virtual_environment_vm" "crd_office_ws" {
         address = "dhcp"
       }
     }
-
-    #user account konfigureras i lokal fil på Proxmox-host (/var/lib/vz/snippets/cloud-config.yaml)
-    user_data_file_id = "local:snippets/cloud-config.yaml"
   }
 
   stop_on_destroy = true

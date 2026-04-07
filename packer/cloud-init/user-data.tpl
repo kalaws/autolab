@@ -9,19 +9,19 @@ autoinstall:
   identity:
     hostname: ubuntu-jammy-packer
     username: ubuntu
-    # Lösenord inaktiverat – åtkomst sker via SSH-nyckel efter kloning
     password: "!"
 
   ssh:
     install-server: true
     allow-pw: false
+    authorized-keys:
+      - ${ssh_public_key}
 
   packages:
     - qemu-guest-agent
 
   late-commands:
     - systemctl enable qemu-guest-agent
-    # Rensa cloud-init state så det körs om vid nästa boot (kloning)
     - cloud-init clean --logs
 
   power_state:
