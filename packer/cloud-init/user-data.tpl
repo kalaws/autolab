@@ -33,6 +33,8 @@ autoinstall:
   late-commands:
     - systemctl enable qemu-guest-agent
     - cloud-init clean --logs
+    # Rensa EFI boot-entries så klonade VM:ar gör fresh UEFI-discovery vid boot
+    - efibootmgr | grep -oP 'Boot\K[0-9A-F]{4}(?=\*)' | xargs -I{} efibootmgr -b {} -B || true
 
   power_state:
     mode: poweroff
