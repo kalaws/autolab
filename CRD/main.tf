@@ -140,7 +140,6 @@ resource "proxmox_virtual_environment_vm" "crd_vpn" {
 resource "proxmox_virtual_environment_vm" "crd_wazuh" {
   name      = "LAB-CRD-Wazuh"
   node_name = "pve"
-  
   depends_on = [terraform_data.apply_network_config]
   clone {
     vm_id = proxmox_virtual_environment_vm.ubuntu_jammy_template.id
@@ -167,10 +166,11 @@ resource "proxmox_virtual_environment_vm" "crd_wazuh" {
     ip_config {
       ipv4 {
         address = "10.10.50.2/24"
+        gateway = "10.10.50.1"
       }
     }
 
-    #user account konfigureras i lokal fil på Proxmox-host (/var/lib/vz/snippets/cloud-config.yaml) 
+    #user account konfigureras i lokal fil på Proxmox-host (/var/lib/vz/snippets/cloud-config.yaml)
     user_data_file_id = "local:snippets/cloud-config.yaml"
   }
 
@@ -237,6 +237,7 @@ resource "proxmox_virtual_environment_vm" "crd_office_ws" {
     ip_config {
       ipv4 {
         address = "10.10.50.3/24"
+        gateway = "10.10.50.1"
       }
     }
 
