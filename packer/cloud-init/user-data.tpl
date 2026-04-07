@@ -27,6 +27,10 @@ autoinstall:
     authorized-keys:
       - ${ssh_public_key}
 
+  storage:
+    layout:
+      name: direct
+
   packages:
     - qemu-guest-agent
 
