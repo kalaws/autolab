@@ -7,15 +7,15 @@ packer {
   }
 }
 
-source "proxmox-iso" "ubuntu_jammy" {
+source "proxmox-iso" "ubuntu_noble" {
   proxmox_url              = var.proxmox_url
   username                 = var.proxmox_token_id
   token                    = var.proxmox_token_secret
   insecure_skip_tls_verify = true
   node                     = "pve"
 
-  vm_name              = "ubuntu-jammy-packer"
-  template_description = "Ubuntu Jammy med qemu-guest-agent – byggd av Packer"
+  vm_name              = "ubuntu-noble-packer"
+  template_description = "Ubuntu Noble med qemu-guest-agent – byggd av Packer"
 
   boot_iso {
     iso_file         = var.iso_file
@@ -78,5 +78,5 @@ source "proxmox-iso" "ubuntu_jammy" {
 }
 
 build {
-  sources = ["source.proxmox-iso.ubuntu_jammy"]
+  sources = ["source.proxmox-iso.ubuntu_noble"]
 }
