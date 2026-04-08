@@ -76,7 +76,7 @@ source "proxmox-iso" "ubuntu-2404-q35" {
   vm_name              = "ubuntu-2404-q35-template"
   template_name        = "ubuntu-2404-q35-template"
   template_description = "Ubuntu 24.04 LTS – Q35/OVMF – Packer ${timestamp()}"
-  tags                 = "ubuntu-24.04;template;packer;uefi"
+  tags                 = "ubuntu-24_04;template;packer;uefi"
   os                   = "l26"
   qemu_agent           = true
 
