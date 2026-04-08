@@ -11,6 +11,22 @@ packer {
 # Variabler
 # ──────────────────────────────────────────────
 
+variable "proxmox_url" {
+  type        = string
+  description = "Proxmox API URL (PKR_VAR_proxmox_url)"
+}
+
+variable "proxmox_token_id" {
+  type        = string
+  description = "API-token ID, t.ex. user@realm!tokenid (PKR_VAR_proxmox_token_id)"
+}
+
+variable "proxmox_token_secret" {
+  type        = string
+  sensitive   = true
+  description = "API-token secret UUID (PKR_VAR_proxmox_token_secret)"
+}
+
 variable "proxmox_node" {
   type    = string
   default = "pve"
@@ -48,9 +64,9 @@ variable "bridge" {
 source "proxmox-iso" "ubuntu-2404" {
 
   # Autentisering via miljövariabler:
-  #   PROXMOX_URL       = "https://<ip>:8006/api2/json"
-  #   PROXMOX_USERNAME  = "user@realm!tokenid"
-  #   PROXMOX_TOKEN     = "<token-secret>"
+  proxmox_url              = var.proxmox_url
+  username                 = var.proxmox_token_id
+  token                    = var.proxmox_token_secret
   insecure_skip_tls_verify = true
 
   node = var.proxmox_node
