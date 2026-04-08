@@ -46,6 +46,8 @@ autoinstall:
   late-commands:
     - curtin in-target -- systemctl enable qemu-guest-agent
     - curtin in-target -- systemctl enable cloud-init
+    - curtin in-target -- systemctl disable systemd-networkd-wait-online.service
+    - curtin in-target -- systemctl mask systemd-networkd-wait-online.service
     - curtin in-target -- apt-get -y autoremove --purge
     - curtin in-target -- apt-get -y clean
     - curtin in-target -- apt-get -y autoclean
