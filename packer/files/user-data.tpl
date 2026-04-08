@@ -42,7 +42,7 @@ autoinstall:
         sudo: ALL=(ALL) NOPASSWD:ALL
         shell: /bin/bash
         ssh_authorized_keys:
-          - SSH_PUBLIC_KEY_PLACEHOLDER
+          - ${ssh_public_key}
   late-commands:
     - curtin in-target -- systemctl enable qemu-guest-agent
     - curtin in-target -- systemctl enable cloud-init
