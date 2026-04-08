@@ -103,8 +103,8 @@ resource "terraform_data" "setup_vpn_gateway" {
 
       echo "Sätter upp DHCP på crd_vpn..."
       ssh -o StrictHostKeyChecking=no -o BatchMode=yes ${var.vm_ssh_user}@$VPN_WAN_IP \
-        'printf "interface=eth1\nbind-interfaces\ndhcp-range=10.10.50.10,10.10.50.100,255.255.255.0,24h\ndhcp-option=option:router,10.10.50.1\ndhcp-option=option:dns-server,8.8.8.8,1.1.1.1\n" | sudo tee /etc/dnsmasq.d/crd-internal.conf && \
-         sudo DEBIAN_FRONTEND=noninteractive apt-get install -y dnsmasq && \
+        'sudo DEBIAN_FRONTEND=noninteractive apt-get install -y dnsmasq && \
+         printf "interface=eth1\nbind-interfaces\ndhcp-range=10.10.50.10,10.10.50.100,255.255.255.0,24h\ndhcp-option=option:router,10.10.50.1\ndhcp-option=option:dns-server,8.8.8.8,1.1.1.1\n" | sudo tee /etc/dnsmasq.d/crd-internal.conf && \
          sudo systemctl enable --now dnsmasq'
     EOT
   }
