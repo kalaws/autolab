@@ -72,7 +72,7 @@ source "proxmox-iso" "ubuntu-2404-q35" {
   scsi_controller = "virtio-scsi-pci"
 
   disks {
-    disk_size    = "20G"
+    disk_size    = "10G"
     storage_pool = var.storage_pool
     type         = "virtio"
     format       = "raw"
