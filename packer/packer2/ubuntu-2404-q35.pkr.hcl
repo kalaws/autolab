@@ -71,7 +71,7 @@ source "proxmox-iso" "ubuntu-2404-q35" {
 
   node = var.proxmox_node
 
-  # ── VM-inställningar ──
+  # ── VM-inställningar ───
   vm_id                = var.vm_id
   vm_name              = "ubuntu-2404-q35-template"
   template_name        = "ubuntu-2404-q35-template"
