@@ -13,7 +13,7 @@ provider "proxmox" {}
 
 
 # ============================================
-# 1. Ladda ner Ubuntu Jammy cloud image
+# 1. Ladda ner Ubuntu Noble cloud image
 # ============================================
 #resource "proxmox_virtual_environment_download_file" "ubuntu_noble" {
 #  content_type = "import"
