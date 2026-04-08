@@ -15,19 +15,19 @@ provider "proxmox" {}
 # ============================================
 # 1. Ladda ner Ubuntu Jammy cloud image
 # ============================================
-#resource "proxmox_virtual_environment_download_file" "ubuntu_jammy" {
+#resource "proxmox_virtual_environment_download_file" "ubuntu_noble" {
 #  content_type = "import"
 #  datastore_id = "local"
 #  node_name    = "pve"
-#  url          = "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
-#  file_name    = "jammy-server-cloudimg-amd64.qcow2"
+#  url          = "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
+#  file_name    = "noble-server-cloudimg-amd64.qcow2"
 #}
 
 # ============================================
 # 2. Skapa template från cloud image
 # ============================================
-resource "proxmox_virtual_environment_vm" "ubuntu_jammy_template" {
-  name      = "ubuntu-jammy-template"
+resource "proxmox_virtual_environment_vm" "ubuntu_noble_template" {
+  name      = "ubuntu-noble-template"
   node_name = "pve"
   template  = true
   started   = false
@@ -42,7 +42,7 @@ resource "proxmox_virtual_environment_vm" "ubuntu_jammy_template" {
 
   disk {
     datastore_id = "local-lvm"
-    import_from  = "local:import/jammy-server-cloudimg-amd64.qcow2"
+    import_from  = "local:import/noble-server-cloudimg-amd64.qcow2"
     interface    = "virtio0"
     iothread     = true
     discard      = "on"
@@ -78,7 +78,7 @@ resource "proxmox_virtual_environment_vm" "plugg_vm" {
   node_name = "pve"
 
   clone {
-    vm_id = proxmox_virtual_environment_vm.ubuntu_jammy_template.id
+    vm_id = proxmox_virtual_environment_vm.ubuntu_noble_template.id
   }
 
   # Överskrid cloud-init per VM
