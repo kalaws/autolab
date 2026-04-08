@@ -9,7 +9,9 @@ autoinstall:
     network:
       version: 2
       ethernets:
-        ens18:
+        any:
+          match:
+            name: "en*"
           dhcp4: true
   refresh-installer:
     update: false
