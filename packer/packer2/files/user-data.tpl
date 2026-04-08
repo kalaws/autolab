@@ -5,6 +5,12 @@ autoinstall:
   keyboard:
     layout: se
     variant: ""
+  network:
+    network:
+      version: 2
+      ethernets:
+        ens18:
+          dhcp4: true
   refresh-installer:
     update: false
   ssh:
