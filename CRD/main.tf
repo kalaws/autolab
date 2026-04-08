@@ -37,7 +37,7 @@ data "proxmox_virtual_environment_vms" "packer_template" {
   node_name = "pve"
   filter {
     name   = "name"
-    values = ["ubuntu-jammy-packer"]
+    values = ["ubuntu-2404-q35-template"]
   }
 }
 
