@@ -104,9 +104,9 @@ source "proxmox-iso" "ubuntu-2404" {
 
   # ── CPU / Minne ──
   cpu_type = "host"
-  cores    = 1
+  cores    = 2
   sockets  = 1
-  memory   = 1024
+  memory   = 4096
 
   # ── Lagring ──
   scsi_controller = "virtio-scsi-pci"
