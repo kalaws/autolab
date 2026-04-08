@@ -52,10 +52,12 @@ source "proxmox-iso" "ubuntu-2404-q35" {
   additional_iso_files {
     type             = "sata"
     iso_storage_pool = "local"
-    cd_files         = [
-      "./files/user-data",
-      "./files/meta-data"
-    ]
+    cd_content = {
+      "user-data" = templatefile("${path.root}/files/user-data.tpl", {
+        ssh_public_key = file(pathexpand(var.ssh_public_key_path))
+      })
+      "meta-data" = ""
+    }
     cd_label = "cidata"
     unmount  = true
   }
