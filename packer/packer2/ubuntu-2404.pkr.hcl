@@ -171,9 +171,9 @@ build {
     inline = [
       "sudo rm -f /etc/ssh/ssh_host_*",
       "sudo truncate -s 0 /etc/machine-id",
-      "sudo cloud-init clean",
       "sudo rm -f /etc/cloud/cloud.cfg.d/subiquity-disable-cloudinit-networking.cfg",
-      "sudo rm -f /etc/netplan/00-installer-config.yaml",
+      "sudo rm -f /etc/netplan/*.yaml",
+      "sudo cloud-init clean --logs",
       "sudo sync"
     ]
   }
