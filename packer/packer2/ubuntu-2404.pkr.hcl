@@ -76,7 +76,7 @@ source "proxmox-iso" "ubuntu-2404" {
   vm_name              = "ubuntu-2404-template"
   template_name        = "ubuntu-2404-template"
   template_description = "Ubuntu 24.04 LTS – Packer ${timestamp()}"
-  tags                 = "ubuntu-24.04;template;packer"
+  tags                 = "ubuntu-24_04;template;packer"
   os                   = "l26"
   qemu_agent           = true
 
