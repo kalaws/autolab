@@ -4,7 +4,16 @@ terraform {
       source  = "bpg/proxmox"
       version = "0.100.0"
     }
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
+    }
   }
+}
+
+# SSH-nyckelpar för control → target
+resource "tls_private_key" "ansible_control" {
+  algorithm = "ED25519"
 }
 
 provider "proxmox" {}
