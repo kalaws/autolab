@@ -15,14 +15,14 @@ resource "proxmox_vm_qemu" "test_vm" {
   target_node = "proxmox"
 
   clone {
-  vm_id = "ubuntu-2404-q35-template"
+    vm_id = "ubuntu-2404-q35-template"
   }
 
-  cores { 
-  cores = 1
+  cpu { 
+    cores = 1
   }
   memory {
-  dedicated = 1024
+    dedicated = 1024
   }
   network {
     model  = "virtio"
