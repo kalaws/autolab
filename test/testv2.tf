@@ -26,7 +26,7 @@ resource "proxmox_virtual_environment_vm" "test_vm" {
   node_name   = "pve"
 
   clone {
-    vm_id = "ubuntu-2404-q35-template".id
+    vm_id = data.proxmox_virtual_environment_vms.test-vm-sr.vms[0].vm_id
   }
 
   cpu { 
