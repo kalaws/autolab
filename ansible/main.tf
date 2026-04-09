@@ -11,7 +11,7 @@ terraform {
   }
 }
 
-# SSH-nyckelpar för control → target
+# SSH-nyckelpar för control → targets
 resource "tls_private_key" "ansible_control" {
   algorithm = "ED25519"
 }
@@ -65,25 +65,10 @@ resource "proxmox_virtual_environment_vm" "ansible_control" {
   }
 }
 
-# Cloud-init snippet: lägg till control nodes pubkey på target
-resource "proxmox_virtual_environment_file" "target_user_data" {
-  content_type = "snippets"
-  datastore_id = "local"
-  node_name    = "pve"
-
-  source_raw {
-    file_name = "ansible-target-user-data.yaml"
-    data      = <<-EOF
-      #cloud-config
-      ssh_authorized_keys:
-        - ${tls_private_key.ansible_control.public_key_openssh}
-    EOF
-  }
-}
-
-# Target node
+# Target nodes
 resource "proxmox_virtual_environment_vm" "ansible_target" {
-  name      = "LAB-ANSIBLE-target"
+  for_each  = toset(var.targets)
+  name      = "LAB-ANSIBLE-${each.key}"
   node_name = "pve"
 
   clone {
@@ -104,7 +89,6 @@ resource "proxmox_virtual_environment_vm" "ansible_target" {
         address = "dhcp"
       }
     }
-    user_data_file_id = proxmox_virtual_environment_file.target_user_data.id
   }
 
   stop_on_destroy = true
@@ -115,8 +99,15 @@ resource "proxmox_virtual_environment_vm" "ansible_target" {
 }
 
 # ============================================
-# 3. Installera Ansible på control node
+# 3. Installera Ansible + konfigurera targets
 # ============================================
+locals {
+  target_ips = {
+    for name, vm in proxmox_virtual_environment_vm.ansible_target :
+    name => vm.ipv4_addresses[1][0]
+  }
+}
+
 resource "terraform_data" "install_ansible" {
   depends_on = [
     proxmox_virtual_environment_vm.ansible_control,
@@ -126,23 +117,36 @@ resource "terraform_data" "install_ansible" {
   provisioner "local-exec" {
     command = <<-EOT
       CONTROL_IP="${proxmox_virtual_environment_vm.ansible_control.ipv4_addresses[1][0]}"
-      TARGET_IP="${proxmox_virtual_environment_vm.ansible_target.ipv4_addresses[1][0]}"
+      SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes"
 
       echo "Väntar på SSH till ansible_control ($CONTROL_IP)..."
-      until ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes \
-        ${var.vm_ssh_user}@$CONTROL_IP true 2>/dev/null; do sleep 5; done
+      until ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP true 2>/dev/null; do sleep 5; done
+
+      # Vänta på alla targets och lägg till pubkey
+      for TARGET_IP in ${join(" ", values(local.target_ips))}; do
+        echo "Väntar på SSH till $TARGET_IP..."
+        until ssh $SSH_OPTS ${var.vm_ssh_user}@$TARGET_IP true 2>/dev/null; do sleep 5; done
+
+        echo "Lägger till control nodes pubkey på $TARGET_IP..."
+        ssh $SSH_OPTS ${var.vm_ssh_user}@$TARGET_IP \
+          "mkdir -p ~/.ssh && chmod 700 ~/.ssh && \
+           echo '${tls_private_key.ansible_control.public_key_openssh}' >> ~/.ssh/authorized_keys && \
+           chmod 600 ~/.ssh/authorized_keys"
+      done
 
       echo "Kopierar SSH-nyckel till control node..."
       echo '${tls_private_key.ansible_control.private_key_openssh}' | \
-        ssh -o StrictHostKeyChecking=no ${var.vm_ssh_user}@$CONTROL_IP \
+        ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP \
         'install -m 700 -d ~/.ssh && cat > ~/.ssh/ansible_ed25519 && chmod 600 ~/.ssh/ansible_ed25519'
 
       echo "Skriver inventory på control node..."
-      ssh -o StrictHostKeyChecking=no ${var.vm_ssh_user}@$CONTROL_IP \
-        "printf '[targets]\n$TARGET_IP ansible_user=${var.vm_ssh_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519\n' > ~/inventory.ini"
+      ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP "cat > ~/inventory.ini" <<'INVENTORY'
+[targets]
+${join("\n", [for ip in values(local.target_ips) : "${ip} ansible_user=${var.vm_ssh_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519"])}
+INVENTORY
 
       echo "Installerar Ansible på control node..."
-      ssh -o StrictHostKeyChecking=no -o BatchMode=yes ${var.vm_ssh_user}@$CONTROL_IP \
+      ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP \
         'until ! sudo fuser /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock \
            /var/cache/apt/archives/lock >/dev/null 2>&1; do \
            echo "Väntar på apt-lås..."; sleep 3; done; \

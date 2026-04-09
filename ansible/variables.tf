@@ -9,3 +9,9 @@ variable "vm_ssh_user" {
   description = "SSH-användare inuti VM:arna"
   default     = "ubuntu"
 }
+
+variable "targets" {
+  type        = list(string)
+  description = "Namn på target-VM:ar"
+  default     = ["target-1"]
+}
