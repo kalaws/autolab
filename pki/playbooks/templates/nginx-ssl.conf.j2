@@ -1,0 +1,17 @@
+server {
+    listen 443 ssl;
+    server_name _;
+
+    ssl_certificate     /etc/pki/server/server.crt;
+    ssl_certificate_key /etc/pki/server/server.key;
+
+    location / {
+        return 200 'PKI Lab - HTTPS fungerar! Server: {{ ansible_hostname }}\n';
+        add_header Content-Type text/plain;
+    }
+}
+
+server {
+    listen 80;
+    return 301 https://$host$request_uri;
+}

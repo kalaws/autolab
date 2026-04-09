@@ -40,3 +40,8 @@ terraform.rc
 .ansible_ed25519
 .ansible_ed25519.pub
 .deploy_ed25519
+.control_ed25519
+.control_ed25519.pub
+
+# Hämtade certifikat och CSR:er (genereras av Ansible)
+pki/playbooks/fetched/

@@ -1,0 +1,111 @@
+---
+- name: Generera nyckel och CSR på server
+  hosts: servers
+  become: true
+
+  tasks:
+    - name: Installera openssl och nginx
+      apt:
+        name: [openssl, nginx]
+        state: present
+        update_cache: true
+
+    - name: Skapa cert-katalog
+      file:
+        path: /etc/pki/server
+        state: directory
+        mode: "0700"
+
+    - name: Generera server-nyckel
+      community.crypto.openssl_privatekey:
+        path: /etc/pki/server/server.key
+        size: 2048
+        mode: "0400"
+
+    - name: Generera CSR
+      community.crypto.openssl_csr:
+        path: /etc/pki/server/server.csr
+        privatekey_path: /etc/pki/server/server.key
+        common_name: "lab-pki-server"
+        subject_alt_name:
+          - "IP:{{ ansible_default_ipv4.address }}"
+
+    - name: Hämta CSR till control node
+      fetch:
+        src: /etc/pki/server/server.csr
+        dest: "{{ playbook_dir }}/fetched/{{ inventory_hostname }}.csr"
+        flat: true
+
+- name: Signera certifikat på CA
+  hosts: ca
+  become: true
+
+  tasks:
+    - name: Skapa temp-katalog för CSR:er
+      file:
+        path: /tmp/csr
+        state: directory
+
+    - name: Kopiera CSR:er till CA
+      copy:
+        src: "{{ playbook_dir }}/fetched/{{ item }}.csr"
+        dest: /tmp/csr/{{ item }}.csr
+      loop: "{{ groups['servers'] }}"
+
+    - name: Signera certifikat
+      community.crypto.x509_certificate:
+        path: /tmp/csr/{{ item }}.crt
+        csr_path: /tmp/csr/{{ item }}.csr
+        ownca_path: /etc/pki/ca/ca.crt
+        ownca_privatekey_path: /etc/pki/ca/ca.key
+        provider: ownca
+        ownca_not_after: "+365d"
+        mode: "0444"
+      loop: "{{ groups['servers'] }}"
+
+    - name: Hämta signerade certifikat till control node
+      fetch:
+        src: /tmp/csr/{{ item }}.crt
+        dest: "{{ playbook_dir }}/fetched/{{ item }}.crt"
+        flat: true
+      loop: "{{ groups['servers'] }}"
+
+    - name: Hämta CA-certifikat till control node
+      fetch:
+        src: /etc/pki/ca/ca.crt
+        dest: "{{ playbook_dir }}/fetched/ca.crt"
+        flat: true
+
+- name: Distribuera certifikat och konfigurera nginx
+  hosts: servers
+  become: true
+
+  tasks:
+    - name: Kopiera server-certifikat
+      copy:
+        src: "{{ playbook_dir }}/fetched/{{ inventory_hostname }}.crt"
+        dest: /etc/pki/server/server.crt
+        mode: "0444"
+
+    - name: Kopiera CA-certifikat
+      copy:
+        src: "{{ playbook_dir }}/fetched/ca.crt"
+        dest: /etc/pki/server/ca.crt
+        mode: "0444"
+
+    - name: Konfigurera nginx med HTTPS
+      template:
+        src: nginx-ssl.conf.j2
+        dest: /etc/nginx/sites-available/default
+      notify: Starta om nginx
+
+    - name: Ta bort default nginx-sida
+      file:
+        path: /var/www/html/index.nginx-debian.html
+        state: absent
+
+  handlers:
+    - name: Starta om nginx
+      service:
+        name: nginx
+        state: restarted

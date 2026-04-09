@@ -1,0 +1,15 @@
+---
+- name: Konfigurera client att lita på Lab CA
+  hosts: clients
+  become: true
+
+  tasks:
+    - name: Kopiera CA-certifikat till client
+      copy:
+        src: "{{ playbook_dir }}/fetched/ca.crt"
+        dest: /usr/local/share/ca-certificates/lab-ca.crt
+        mode: "0444"
+
+    - name: Uppdatera trust store
+      command: update-ca-certificates
+      changed_when: true
