@@ -15,3 +15,9 @@ variable "targets" {
   description = "Namn på target-VM:ar"
   default     = ["target-1"]
 }
+
+variable "github_owner" {
+  type        = string
+  description = "GitHub-användarnamn eller organisation"
+  default     = "kalaws"
+}

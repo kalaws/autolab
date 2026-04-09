@@ -12,6 +12,10 @@ terraform {
       source  = "hashicorp/local"
       version = "~> 2.0"
     }
+    github = {
+      source  = "integrations/github"
+      version = "~> 6.0"
+    }
   }
 }
 
@@ -32,7 +36,26 @@ resource "local_file" "ansible_public_key" {
   file_permission = "0644"
 }
 
+# Deploy key för git clone på control node
+resource "tls_private_key" "deploy_key" {
+  algorithm = "ED25519"
+}
+
+resource "local_sensitive_file" "deploy_private_key" {
+  content         = tls_private_key.deploy_key.private_key_openssh
+  filename        = "${path.module}/.deploy_ed25519"
+  file_permission = "0600"
+}
+
+resource "github_repository_deploy_key" "autolab" {
+  title      = "LAB-ANSIBLE-control"
+  repository = "autolab"
+  key        = tls_private_key.deploy_key.public_key_openssh
+  read_only  = true
+}
+
 provider "proxmox" {}
+provider "github" {}
 
 # ============================================
 # 1. Slå upp Packer-byggt template
@@ -128,6 +151,7 @@ resource "terraform_data" "install_ansible" {
   depends_on = [
     proxmox_virtual_environment_vm.ansible_control,
     proxmox_virtual_environment_vm.ansible_target,
+    github_repository_deploy_key.autolab,
   ]
 
   provisioner "local-exec" {
@@ -147,12 +171,13 @@ resource "terraform_data" "install_ansible" {
         ssh-copy-id $SSH_OPTS -i ${local_file.ansible_public_key.filename} ${var.vm_ssh_user}@$TARGET_IP
       done
 
-      echo "Kopierar SSH-nyckel till control node..."
+      echo "Kopierar SSH-nycklar till control node..."
       scp $SSH_OPTS ${local_sensitive_file.ansible_private_key.filename} ${var.vm_ssh_user}@$CONTROL_IP:.ssh/ansible_ed25519
+      scp $SSH_OPTS ${local_sensitive_file.deploy_private_key.filename} ${var.vm_ssh_user}@$CONTROL_IP:.ssh/deploy_ed25519
 
       echo "Skriver SSH-config på control node..."
       ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP \
-        "printf 'Host 10.*\n  User ${var.vm_ssh_user}\n  IdentityFile ~/.ssh/ansible_ed25519\n  StrictHostKeyChecking no\n' > ~/.ssh/config && chmod 600 ~/.ssh/config"
+        "printf 'Host 10.*\n  User ${var.vm_ssh_user}\n  IdentityFile ~/.ssh/ansible_ed25519\n  StrictHostKeyChecking no\n\nHost github.com\n  IdentityFile ~/.ssh/deploy_ed25519\n  StrictHostKeyChecking no\n' > ~/.ssh/config && chmod 600 ~/.ssh/config"
 
       echo "Skriver inventory på control node..."
       ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP \
@@ -163,8 +188,12 @@ resource "terraform_data" "install_ansible" {
         'sudo cloud-init status --wait && \
          sudo apt-get -o DPkg::Lock::Timeout=300 update -qq && \
          sudo DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 upgrade -y && \
-         sudo DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 install -y ansible && \
+         sudo DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 install -y ansible git && \
          ansible --version'
+
+      echo "Klonar repot på control node..."
+      ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP \
+        "git clone git@github.com:${var.github_owner}/autolab.git ~/autolab"
     EOT
   }
 }
