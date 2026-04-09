@@ -14,7 +14,9 @@ resource "proxmox_vm_qemu" "test_vm" {
   name        = "terraform-test"
   target_node = "proxmox"
 
-  clone = "ubuntu-2404-q35-template"
+  clone {
+  vm_id = "ubuntu-2404-q35-template"
+  }
 
   cores  = 1
   memory = 1024
