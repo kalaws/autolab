@@ -149,11 +149,10 @@ resource "terraform_data" "install_ansible" {
 
       echo "Installerar Ansible på control node..."
       ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP \
-        'sudo flock /var/lib/apt/lists/lock apt-get update -qq && \
-         sudo flock /var/lib/dpkg/lock-frontend \
-           env DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
-         sudo flock /var/lib/dpkg/lock-frontend \
-           env DEBIAN_FRONTEND=noninteractive apt-get install -y ansible && \
+        'while pgrep -f apt > /dev/null 2>&1; do echo "Väntar på apt-processer..."; sleep 3; done; \
+         sudo apt-get -o DPkg::Lock::Timeout=300 update -qq && \
+         sudo DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 upgrade -y && \
+         sudo DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 install -y ansible && \
          ansible --version'
     EOT
   }
