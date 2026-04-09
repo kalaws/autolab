@@ -46,6 +46,6 @@ resource "proxmox_virtual_environment_vm" "test_vm" {
       }
     }
   }
-{  stop on destroy = true
+{  stop_on_destroy = true
 }
 }
