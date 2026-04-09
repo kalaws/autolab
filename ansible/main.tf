@@ -149,7 +149,9 @@ resource "terraform_data" "install_ansible" {
 
       echo "Installerar Ansible på control node..."
       ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP \
-        'sudo apt-get -o DPkg::Lock::Timeout=300 update -qq && \
+        'sudo systemctl stop apt-daily.timer apt-daily-upgrade.timer apt-daily.service apt-daily-upgrade.service 2>/dev/null || true; \
+         while sudo pgrep -x apt-get apt-cache unattended-upgr > /dev/null 2>&1; do echo "Väntar på apt-processer..."; sleep 3; done; \
+         sudo apt-get -o DPkg::Lock::Timeout=300 update -qq && \
          sudo DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 upgrade -y && \
          sudo DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 install -y ansible && \
          ansible --version'
