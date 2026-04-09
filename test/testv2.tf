@@ -39,4 +39,13 @@ resource "proxmox_virtual_environment_vm" "test_vm" {
     model  = "virtio"
     bridge = "vnet1"
   }
+  initialization {
+    ip_config {
+      ipv4 {
+        address = "dhcp"
+      }
+    }
+  }
+{  stop on destroy = true
+}
 }
