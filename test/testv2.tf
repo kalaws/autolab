@@ -13,7 +13,7 @@ provider "proxmox" {}
 # ============================================
 # 1. Slå upp Packer-byggt template
 # ============================================
-data "proxmox_virtual_environment_vms" "packer_template" {
+data "proxmox_virtual_environment_vms" "test-vm-sr" {
   node_name = "pve"
   filter {
     name   = "name"
