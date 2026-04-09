@@ -140,19 +140,14 @@ resource "terraform_data" "install_ansible" {
         'install -m 700 -d ~/.ssh && cat > ~/.ssh/ansible_ed25519 && chmod 600 ~/.ssh/ansible_ed25519'
 
       echo "Skriver inventory på control node..."
-      ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP "cat > ~/inventory.ini" <<'INVENTORY'
-[targets]
-${join("\n", [for ip in values(local.target_ips) : "${ip} ansible_user=${var.vm_ssh_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519"])}
-INVENTORY
+      ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP \
+        "printf '[targets]\n${join("\\n", [for ip in values(local.target_ips) : "${ip} ansible_user=${var.vm_ssh_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519"])}\n' > ~/inventory.ini"
 
       echo "Installerar Ansible på control node..."
       ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP \
-        'until ! sudo fuser /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock \
-           /var/cache/apt/archives/lock >/dev/null 2>&1; do \
-           echo "Väntar på apt-lås..."; sleep 3; done; \
-         sudo apt-get update -qq && \
-         sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
-         sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ansible && \
+        'sudo apt-get -o DPkg::Lock::Timeout=300 update -qq && \
+         sudo DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 upgrade -y && \
+         sudo DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 install -y ansible && \
          ansible --version'
     EOT
   }
