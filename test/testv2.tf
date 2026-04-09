@@ -1,6 +1,14 @@
-provider "proxmox" {
-
+terraform {
+  required_providers {
+    proxmox = {
+      source  = "bpg/proxmox"
+      version = "0.99.0" # Using the required version
+    }
+  }
 }
+# Provider is configured using environment args
+
+provider "proxmox" {}
 
 resource "proxmox_vm_qemu" "test_vm" {
   name        = "terraform-test"
