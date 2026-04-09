@@ -10,7 +10,7 @@ terraform {
 
 provider "proxmox" {}
 
-resource "proxmox_vm_qemu" "test_vm" {
+resource "proxmox_virtual_environment_vm" "test_vm" {
   name        = "terraform-test"
   node_name   = "pve"
 
