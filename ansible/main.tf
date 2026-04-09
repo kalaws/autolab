@@ -55,7 +55,9 @@ resource "github_repository_deploy_key" "autolab" {
 }
 
 provider "proxmox" {}
-provider "github" {}
+provider "github" {
+  owner = var.github_owner
+}
 
 # ============================================
 # 1. Slå upp Packer-byggt template
