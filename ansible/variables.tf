@@ -21,3 +21,9 @@ variable "github_owner" {
   description = "GitHub-användarnamn eller organisation"
   default     = "kalaws"
 }
+
+variable "github_branch" {
+  type        = string
+  description = "Branch att klona"
+  default     = "Ansible.test"
+}

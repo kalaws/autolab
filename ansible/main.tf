@@ -195,7 +195,7 @@ resource "terraform_data" "install_ansible" {
 
       echo "Klonar repot på control node..."
       ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP \
-        "git clone git@github.com:${var.github_owner}/autolab.git ~/autolab"
+        "git clone -b ${var.github_branch} git@github.com:${var.github_owner}/autolab.git ~/autolab"
     EOT
   }
 }
