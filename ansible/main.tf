@@ -139,6 +139,10 @@ resource "terraform_data" "install_ansible" {
         ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP \
         'install -m 700 -d ~/.ssh && cat > ~/.ssh/ansible_ed25519 && chmod 600 ~/.ssh/ansible_ed25519'
 
+      echo "Skriver SSH-config på control node..."
+      ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP \
+        "printf 'Host 10.*\n  User ${var.vm_ssh_user}\n  IdentityFile ~/.ssh/ansible_ed25519\n  StrictHostKeyChecking no\n' > ~/.ssh/config && chmod 600 ~/.ssh/config"
+
       echo "Skriver inventory på control node..."
       ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP \
         "printf '[targets]\n${join("\\n", [for ip in values(local.target_ips) : "${ip} ansible_user=${var.vm_ssh_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519"])}\n' > ~/inventory.ini"
