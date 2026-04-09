@@ -18,9 +18,12 @@ resource "proxmox_vm_qemu" "test_vm" {
   vm_id = "ubuntu-2404-q35-template"
   }
 
-  cores  = 1
-  memory = 1024
-
+  cores { 
+  cores = 1
+  }
+  memory {
+  dedicated = 1024
+  }
   network {
     model  = "virtio"
     bridge = "vmbr0"
