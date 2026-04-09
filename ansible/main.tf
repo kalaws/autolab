@@ -65,6 +65,22 @@ resource "proxmox_virtual_environment_vm" "ansible_control" {
   }
 }
 
+# Cloud-init snippet: lägg till control nodes pubkey på target
+resource "proxmox_virtual_environment_file" "target_user_data" {
+  content_type = "snippets"
+  datastore_id = "local"
+  node_name    = "pve"
+
+  source_raw {
+    file_name = "ansible-target-user-data.yaml"
+    data      = <<-EOF
+      #cloud-config
+      ssh_authorized_keys:
+        - ${tls_private_key.ansible_control.public_key_openssh}
+    EOF
+  }
+}
+
 # Target node
 resource "proxmox_virtual_environment_vm" "ansible_target" {
   name      = "LAB-ANSIBLE-target"
@@ -88,6 +104,7 @@ resource "proxmox_virtual_environment_vm" "ansible_target" {
         address = "dhcp"
       }
     }
+    user_data_file_id = proxmox_virtual_environment_file.target_user_data.id
   }
 
   stop_on_destroy = true
@@ -101,24 +118,36 @@ resource "proxmox_virtual_environment_vm" "ansible_target" {
 # 3. Installera Ansible på control node
 # ============================================
 resource "terraform_data" "install_ansible" {
-  depends_on = [proxmox_virtual_environment_vm.ansible_control]
+  depends_on = [
+    proxmox_virtual_environment_vm.ansible_control,
+    proxmox_virtual_environment_vm.ansible_target,
+  ]
 
   provisioner "local-exec" {
     command = <<-EOT
       CONTROL_IP="${proxmox_virtual_environment_vm.ansible_control.ipv4_addresses[1][0]}"
+      TARGET_IP="${proxmox_virtual_environment_vm.ansible_target.ipv4_addresses[1][0]}"
+
       echo "Väntar på SSH till ansible_control ($CONTROL_IP)..."
       until ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes \
         ${var.vm_ssh_user}@$CONTROL_IP true 2>/dev/null; do sleep 5; done
 
+      echo "Kopierar SSH-nyckel till control node..."
+      echo '${tls_private_key.ansible_control.private_key_openssh}' | \
+        ssh -o StrictHostKeyChecking=no ${var.vm_ssh_user}@$CONTROL_IP \
+        'install -m 700 -d ~/.ssh && cat > ~/.ssh/ansible_ed25519 && chmod 600 ~/.ssh/ansible_ed25519'
+
+      echo "Skriver inventory på control node..."
+      ssh -o StrictHostKeyChecking=no ${var.vm_ssh_user}@$CONTROL_IP \
+        "printf '[targets]\n$TARGET_IP ansible_user=${var.vm_ssh_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519\n' > ~/inventory.ini"
+
       echo "Installerar Ansible på control node..."
       ssh -o StrictHostKeyChecking=no -o BatchMode=yes ${var.vm_ssh_user}@$CONTROL_IP \
-        'sudo systemctl disable --now unattended-upgrades 2>/dev/null || true; \
-         sudo systemd-run --property="After=apt-daily.service apt-daily-upgrade.service" \
-           --wait /bin/true 2>/dev/null || true; \
-         until ! sudo fuser /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock \
+        'until ! sudo fuser /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock \
            /var/cache/apt/archives/lock >/dev/null 2>&1; do \
            echo "Väntar på apt-lås..."; sleep 3; done; \
          sudo apt-get update -qq && \
+         sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ansible && \
          ansible --version'
     EOT
