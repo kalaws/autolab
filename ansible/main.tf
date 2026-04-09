@@ -103,7 +103,13 @@ resource "terraform_data" "install_ansible" {
 
       echo "Installerar Ansible på control node..."
       ssh -o StrictHostKeyChecking=no -o BatchMode=yes ${var.vm_ssh_user}@$CONTROL_IP \
-        'sudo apt-get update -qq && \
+        'sudo systemctl disable --now unattended-upgrades 2>/dev/null || true; \
+         sudo systemd-run --property="After=apt-daily.service apt-daily-upgrade.service" \
+           --wait /bin/true 2>/dev/null || true; \
+         until ! sudo fuser /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock \
+           /var/cache/apt/archives/lock >/dev/null 2>&1; do \
+           echo "Väntar på apt-lås..."; sleep 3; done; \
+         sudo apt-get update -qq && \
          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ansible && \
          ansible --version'
     EOT
