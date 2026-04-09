@@ -1,11 +1,11 @@
 ---
 - name: Testa anslutnigar till alla targets
-hosts: targets
-gather_facts: false
-tasks:
+  hosts: targets
+  gather_facts: false
+  tasks:
 - name: Pinga alla targets
-ansible.builtin.ping:
-register: ping_result
+  ansible.builtin.ping:
+  register: ping_result
 - name: Skriv ut resultat
-ansible.builtin.debug:
+  ansible.builtin.debug:
   msg: "✅ {{ inventory_hostname }} svarar!"
