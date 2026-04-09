@@ -26,6 +26,6 @@ resource "proxmox_vm_qemu" "test_vm" {
   }
   network {
     model  = "virtio"
-    bridge = "vmbr0"
+    bridge = "vnet1"
   }
 }
