@@ -10,6 +10,17 @@ terraform {
 
 provider "proxmox" {}
 
+# ============================================
+# 1. Slå upp Packer-byggt template
+# ============================================
+data "proxmox_virtual_environment_vms" "packer_template" {
+  node_name = "pve"
+  filter {
+    name   = "name"
+    values = ["ubuntu-2404-q35-template"]
+  }
+}
+
 resource "proxmox_virtual_environment_vm" "test_vm" {
   name        = "terraform-test"
   node_name   = "pve"
