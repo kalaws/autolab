@@ -8,12 +8,22 @@ terraform {
       source  = "hashicorp/tls"
       version = "~> 4.0"
     }
+    local = {
+      source  = "hashicorp/local"
+      version = "~> 2.0"
+    }
   }
 }
 
 # SSH-nyckelpar för control → targets
 resource "tls_private_key" "ansible_control" {
   algorithm = "ED25519"
+}
+
+resource "local_sensitive_file" "ansible_private_key" {
+  content         = tls_private_key.ansible_control.private_key_openssh
+  filename        = "${path.module}/.ansible_ed25519"
+  file_permission = "0600"
 }
 
 provider "proxmox" {}
@@ -128,16 +138,11 @@ resource "terraform_data" "install_ansible" {
         until ssh $SSH_OPTS ${var.vm_ssh_user}@$TARGET_IP true 2>/dev/null; do sleep 5; done
 
         echo "Lägger till control nodes pubkey på $TARGET_IP..."
-        ssh $SSH_OPTS ${var.vm_ssh_user}@$TARGET_IP \
-          "mkdir -p ~/.ssh && chmod 700 ~/.ssh && \
-           echo '${tls_private_key.ansible_control.public_key_openssh}' >> ~/.ssh/authorized_keys && \
-           chmod 600 ~/.ssh/authorized_keys"
+        ssh-copy-id $SSH_OPTS -i ${local_sensitive_file.ansible_private_key.filename} ${var.vm_ssh_user}@$TARGET_IP
       done
 
       echo "Kopierar SSH-nyckel till control node..."
-      echo '${tls_private_key.ansible_control.private_key_openssh}' | \
-        ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP \
-        'install -m 700 -d ~/.ssh && cat > ~/.ssh/ansible_ed25519 && chmod 600 ~/.ssh/ansible_ed25519'
+      scp $SSH_OPTS ${local_sensitive_file.ansible_private_key.filename} ${var.vm_ssh_user}@$CONTROL_IP:.ssh/ansible_ed25519
 
       echo "Skriver SSH-config på control node..."
       ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP \
