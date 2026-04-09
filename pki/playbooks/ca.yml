@@ -22,13 +22,21 @@
         size: 4096
         mode: "0400"
 
+    - name: Generera CSR för CA
+      community.crypto.openssl_csr:
+        path: /etc/pki/ca/ca.csr
+        privatekey_path: /etc/pki/ca/ca.key
+        common_name: "Lab CA"
+        organization_name: "Lab"
+        basic_constraints:
+          - "CA:TRUE"
+        basic_constraints_critical: true
+
     - name: Generera CA-certifikat (self-signed)
       community.crypto.x509_certificate:
         path: /etc/pki/ca/ca.crt
         privatekey_path: /etc/pki/ca/ca.key
+        csr_path: /etc/pki/ca/ca.csr
         provider: selfsigned
         selfsigned_not_after: "+3650d"
-        subject:
-          CN: "Lab CA"
-          O: "Lab"
         mode: "0444"
