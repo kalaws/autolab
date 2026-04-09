@@ -12,7 +12,7 @@ provider "proxmox" {}
 
 resource "proxmox_vm_qemu" "test_vm" {
   name        = "terraform-test"
-  target_node = "proxmox"
+  target_node = "pve"
 
   clone {
     vm_id = "ubuntu-2404-q35-template"
