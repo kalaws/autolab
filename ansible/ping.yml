@@ -3,9 +3,9 @@
   hosts: targets
   gather_facts: false
   tasks:
-- name: Pinga alla targets
-  ansible.builtin.ping:
-  register: ping_result
-- name: Skriv ut resultat
-  ansible.builtin.debug:
-  msg: "✅ {{ inventory_hostname }} svarar!"
+      - name: Pinga alla targets
+        ansible.builtin.ping:
+        register: ping_result
+      - name: Skriv ut resultat
+        ansible.builtin.debug:
+          msg: "✅ {{ inventory_hostname }} svarar!"
