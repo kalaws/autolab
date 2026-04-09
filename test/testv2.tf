@@ -24,7 +24,7 @@ resource "proxmox_vm_qemu" "test_vm" {
   memory {
     dedicated = 1024
   }
-  network {
+  network_device {
     model  = "virtio"
     bridge = "vnet1"
   }
