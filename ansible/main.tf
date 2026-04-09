@@ -26,6 +26,12 @@ resource "local_sensitive_file" "ansible_private_key" {
   file_permission = "0600"
 }
 
+resource "local_file" "ansible_public_key" {
+  content         = tls_private_key.ansible_control.public_key_openssh
+  filename        = "${path.module}/.ansible_ed25519.pub"
+  file_permission = "0644"
+}
+
 provider "proxmox" {}
 
 # ============================================
@@ -138,7 +144,7 @@ resource "terraform_data" "install_ansible" {
         until ssh $SSH_OPTS ${var.vm_ssh_user}@$TARGET_IP true 2>/dev/null; do sleep 5; done
 
         echo "Lägger till control nodes pubkey på $TARGET_IP..."
-        ssh-copy-id $SSH_OPTS -i ${local_sensitive_file.ansible_private_key.filename} ${var.vm_ssh_user}@$TARGET_IP
+        ssh-copy-id $SSH_OPTS -i ${local_file.ansible_public_key.filename} ${var.vm_ssh_user}@$TARGET_IP
       done
 
       echo "Kopierar SSH-nyckel till control node..."
