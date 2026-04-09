@@ -91,7 +91,11 @@ resource "proxmox_virtual_environment_vm" "control" {
   clone { vm_id = local.vm_template_id }
   memory { dedicated = local.vms.control.memory }
   network_device { bridge = var.bridge_wan }
-  initialization { ip_config { ipv4 { address = "dhcp" } } }
+  initialization {
+    ip_config {
+      ipv4 { address = "dhcp" }
+    }
+  }
   stop_on_destroy = true
   agent { enabled = true }
 }
@@ -102,7 +106,11 @@ resource "proxmox_virtual_environment_vm" "ca" {
   clone { vm_id = local.vm_template_id }
   memory { dedicated = local.vms.ca.memory }
   network_device { bridge = var.bridge_wan }
-  initialization { ip_config { ipv4 { address = "dhcp" } } }
+  initialization {
+    ip_config {
+      ipv4 { address = "dhcp" }
+    }
+  }
   stop_on_destroy = true
   agent { enabled = true }
 }
@@ -113,7 +121,11 @@ resource "proxmox_virtual_environment_vm" "server" {
   clone { vm_id = local.vm_template_id }
   memory { dedicated = local.vms.server.memory }
   network_device { bridge = var.bridge_wan }
-  initialization { ip_config { ipv4 { address = "dhcp" } } }
+  initialization {
+    ip_config {
+      ipv4 { address = "dhcp" }
+    }
+  }
   stop_on_destroy = true
   agent { enabled = true }
 }
@@ -124,7 +136,11 @@ resource "proxmox_virtual_environment_vm" "client" {
   clone { vm_id = local.vm_template_id }
   memory { dedicated = local.vms.client.memory }
   network_device { bridge = var.bridge_wan }
-  initialization { ip_config { ipv4 { address = "dhcp" } } }
+  initialization {
+    ip_config {
+      ipv4 { address = "dhcp" }
+    }
+  }
   stop_on_destroy = true
   agent { enabled = true }
 }
