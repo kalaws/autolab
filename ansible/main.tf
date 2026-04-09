@@ -142,6 +142,8 @@ resource "proxmox_virtual_environment_vm" "ansible_target" {
 # ============================================
 # 3. Installera Ansible + konfigurera targets
 # ============================================
+
+# Enumerate ansible target IPs
 locals {
   target_ips = {
     for name, vm in proxmox_virtual_environment_vm.ansible_target :
@@ -173,19 +175,19 @@ resource "terraform_data" "install_ansible" {
         ssh-copy-id $SSH_OPTS -i ${local_file.ansible_public_key.filename} ${var.vm_ssh_user}@$TARGET_IP
       done
 
-      echo "Kopierar SSH-nycklar till control node..."
+      echo "Kopierar SSH-nycklar till ansible control node..."
       scp $SSH_OPTS ${local_sensitive_file.ansible_private_key.filename} ${var.vm_ssh_user}@$CONTROL_IP:.ssh/ansible_ed25519
       scp $SSH_OPTS ${local_sensitive_file.deploy_private_key.filename} ${var.vm_ssh_user}@$CONTROL_IP:.ssh/deploy_ed25519
 
-      echo "Skriver SSH-config på control node..."
+      echo "Skriver SSH-config på ansible control node..."
       ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP \
         "printf 'Host 10.*\n  User ${var.vm_ssh_user}\n  IdentityFile ~/.ssh/ansible_ed25519\n  StrictHostKeyChecking no\n\nHost github.com\n  IdentityFile ~/.ssh/deploy_ed25519\n  StrictHostKeyChecking no\n' > ~/.ssh/config && chmod 600 ~/.ssh/config"
 
-      echo "Skriver inventory på control node..."
+      echo "Skriver inventory på ansible control node..."
       ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP \
         "printf '[targets]\n${join("\\n", [for ip in values(local.target_ips) : "${ip} ansible_user=${var.vm_ssh_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519"])}\n' > ~/inventory.ini"
 
-      echo "Installerar Ansible på control node..."
+      echo "Installerar Ansible på ansible control node..."
       ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP \
         'sudo cloud-init status --wait && \
          sudo apt-get -o DPkg::Lock::Timeout=300 update -qq && \
@@ -193,7 +195,7 @@ resource "terraform_data" "install_ansible" {
          sudo DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 install -y ansible git && \
          ansible --version'
 
-      echo "Klonar repot på control node..."
+      echo "Klonar repot på ansible control node..."
       ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP \
         "git clone -b ${var.github_branch} git@github.com:${var.github_owner}/autolab.git ~/autolab"
     EOT
