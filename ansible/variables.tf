@@ -25,5 +25,5 @@ variable "github_owner" {
 variable "github_branch" {
   type        = string
   description = "Branch att klona"
-  default     = "Ansible.test"
+  default     = "master"
 }

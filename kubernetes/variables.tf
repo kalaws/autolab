@@ -16,8 +16,3 @@ variable "github_owner" {
   default     = "kalaws"
 }
 
-variable "github_branch" {
-  type        = string
-  description = "Branch att klona"
-  default     = "start-kubernetes-lab"
-}
