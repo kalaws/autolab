@@ -1,5 +1,5 @@
 ---
-- name: Testa anslutnigar till alla targets
+- name: Testa anslutningar till alla targets
   hosts: targets
   gather_facts: false
   tasks:
