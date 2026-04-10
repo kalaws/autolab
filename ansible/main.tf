@@ -19,23 +19,6 @@ terraform {
   }
 }
 
-# SSH-nyckelpar för control → targets
-resource "tls_private_key" "ansible_control" {
-  algorithm = "ED25519"
-}
-
-resource "local_sensitive_file" "ansible_private_key" {
-  content         = tls_private_key.ansible_control.private_key_openssh
-  filename        = "${path.module}/.ansible_ed25519"
-  file_permission = "0600"
-}
-
-resource "local_file" "ansible_public_key" {
-  content         = tls_private_key.ansible_control.public_key_openssh
-  filename        = "${path.module}/.ansible_ed25519.pub"
-  file_permission = "0644"
-}
-
 # Deploy key för git clone på control node
 resource "tls_private_key" "deploy_key" {
   algorithm = "ED25519"
@@ -166,17 +149,24 @@ resource "terraform_data" "install_ansible" {
       echo "Väntar på SSH till ansible_control ($CONTROL_IP)..."
       until ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP true 2>/dev/null; do sleep 5; done
 
+      echo "Genererar SSH-nyckelpar på ansible control..."
+      ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP \
+        "ssh-keygen -t ed25519 -f ~/.ssh/ansible_ed25519 -N '' -C 'ansible-control'"
+
+      echo "Hämtar pubkey från ansible control..."
+      ANSIBLE_PUBKEY=$(ssh $SSH_OPTS ${var.vm_ssh_user}@$CONTROL_IP "cat ~/.ssh/ansible_ed25519.pub")
+
       # Vänta på alla targets och lägg till pubkey
       for TARGET_IP in ${join(" ", values(local.target_ips))}; do
         echo "Väntar på SSH till $TARGET_IP..."
         until ssh $SSH_OPTS ${var.vm_ssh_user}@$TARGET_IP true 2>/dev/null; do sleep 5; done
 
         echo "Lägger till control nodes pubkey på $TARGET_IP..."
-        ssh-copy-id $SSH_OPTS -i ${local_file.ansible_public_key.filename} ${var.vm_ssh_user}@$TARGET_IP
+        ssh $SSH_OPTS ${var.vm_ssh_user}@$TARGET_IP \
+          "mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo '$ANSIBLE_PUBKEY' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
       done
 
-      echo "Kopierar SSH-nycklar till ansible control node..."
-      scp $SSH_OPTS ${local_sensitive_file.ansible_private_key.filename} ${var.vm_ssh_user}@$CONTROL_IP:.ssh/ansible_ed25519
+      echo "Kopierar deploy key till ansible control..."
       scp $SSH_OPTS ${local_sensitive_file.deploy_private_key.filename} ${var.vm_ssh_user}@$CONTROL_IP:.ssh/deploy_ed25519
 
       echo "Skriver SSH-config på ansible control node..."

@@ -37,11 +37,8 @@ override.tf.json
 terraform.rc
 
 # Genererade SSH-nycklar
-.ansible_ed25519
-.ansible_ed25519.pub
-.deploy_ed25519
-.control_ed25519
-.control_ed25519.pub
+*ed25519
+*ed25519.pub
 
 # Hämtade certifikat och CSR:er (genereras av Ansible)
 pki/playbooks/fetched/
