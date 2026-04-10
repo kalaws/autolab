@@ -1,5 +1,0 @@
----
-- import_playbook: ca.yml
-- import_playbook: server.yml
-- import_playbook: client.yml
-- import_playbook: verify.yml
