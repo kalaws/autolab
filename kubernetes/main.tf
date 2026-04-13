@@ -25,7 +25,6 @@ provider "github" {
 }
 
 locals {
-  ansible_github_branch  = "start-kubernetes-lab"
   ansible_control_ram    = 2048
   k8s_control_cores      = 2
   k8s_control_ram        = 4096
