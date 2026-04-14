@@ -100,5 +100,6 @@ resource "proxmox_virtual_environment_container" "ansible_control" {
   }
 
   started         = true
+  features { nesting = true }
 }
 
