@@ -7,9 +7,9 @@
 
 - name: Starta och aktivera nginx
   ansible.builtin.apt:
-      name: nginx
-      state: started
-      enale: true
+    name: nginx
+    state: started
+    enale: true
 
 - name: Kontrollera att nginx körs
   ansible.builtin.debug:
