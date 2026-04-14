@@ -10,20 +10,9 @@ variable "vm_ssh_user" {
   default     = "ubuntu"
 }
 
-variable "targets" {
-  type        = list(string)
-  description = "Namn på target-VM:ar"
-  default     = ["target-1"]
-}
-
 variable "github_owner" {
   type        = string
   description = "GitHub-användarnamn eller organisation"
   default     = "kalaws"
 }
 
-variable "github_branch" {
-  type        = string
-  description = "Branch att klona"
-  default     = "master"
-}
