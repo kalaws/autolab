@@ -59,6 +59,11 @@ resource "local_sensitive_file" "terraform_ssh_private" {
 resource "proxmox_virtual_environment_container" "ansible_control" {
   description = "Ansible control node (CT)"
   node_name   = "pve"
+  unprivileged = true
+
+  features {
+    nesting = true
+  }
 
   initialization {
     hostname = "LAB-ANSIBLE-CT-control"
@@ -99,7 +104,9 @@ resource "proxmox_virtual_environment_container" "ansible_control" {
     size         = 8
   }
 
-  started         = true
-  features { nesting = true }
+  started = true
 }
 
+locals {
+  control_ip = proxmox_virtual_environment_container.ansible_control.ipv4["eth0"]
+}
