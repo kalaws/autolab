@@ -18,3 +18,8 @@ terraform {
     }
   }
 }
+
+provider "proxmox" {}
+provider "github" {
+  owner = var.github_owner
+}
