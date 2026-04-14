@@ -68,6 +68,10 @@ resource "proxmox_virtual_environment_container" "ansible_control" {
   initialization {
     hostname = "LAB-ANSIBLE-CT-control"
 
+    dns {
+      servers = var.dns_servers
+    }
+
     ip_config {
       ipv4 {
         address = "dhcp"
@@ -123,6 +127,10 @@ resource "proxmox_virtual_environment_container" "ansible_target" {
   initialization {
     hostname = "LAB-ANSIBLE-CT-${each.key}"
 
+    dns {
+      servers = var.dns_servers
+    }
+
     ip_config {
       ipv4 {
         address = "dhcp"
@@ -164,6 +172,7 @@ resource "proxmox_virtual_environment_container" "ansible_target" {
 
 locals {
   control_ip = proxmox_virtual_environment_container.ansible_control.ipv4["eth0"]
+  gateway    = "${join(".", slice(split(".", local.control_ip), 0, 3))}.1"
   target_ips = {
     for name, ct in proxmox_virtual_environment_container.ansible_target :
     name => ct.ipv4["eth0"]
@@ -188,6 +197,14 @@ resource "terraform_data" "install_ansible" {
       echo "Väntar på SSH till ansible_control ($CONTROL_IP)..."
       until ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP true 2>/dev/null; do sleep 5; done
 
+      echo "Sätter DNS på ansible control (${local.gateway})..."
+      ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP \
+        "{ echo 'nameserver ${local.gateway}'; %{ for dns in var.dns_servers ~}echo 'nameserver ${dns}'; %{ endfor ~}} > /etc/resolv.conf"
+      if ! ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP \
+        "python3 -c 'import socket; socket.setdefaulttimeout(2); socket.getaddrinfo(\"packages.ubuntu.com\", 80)' 2>/dev/null"; then
+        echo "WARNING: Gateway ${local.gateway} svarar inte på DNS — faller tillbaka på ${join(", ", var.dns_servers)}"
+      fi
+
       echo "Genererar SSH-nyckelpar på ansible control..."
       ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP \
         "ssh-keygen -t ed25519 -f ~/.ssh/ansible_ed25519 -N '' -C 'ansible-control'"
@@ -196,14 +213,25 @@ resource "terraform_data" "install_ansible" {
       ANSIBLE_PUBKEY=$(ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP "cat ~/.ssh/ansible_ed25519.pub")
 
       # Vänta på alla targets och lägg till pubkey
-      for TARGET_IP in ${join(" ", values(local.target_ips))}; do
-        echo "Väntar på SSH till $TARGET_IP..."
-        until ssh $SSH_OPTS ${var.ct_ssh_user}@$TARGET_IP true 2>/dev/null; do sleep 5; done
+      %{ for name, ip in local.target_ips ~}
+      TARGET_IP="${ip}"
+      TARGET_GW="${join(".", slice(split(".", ip), 0, 3))}.1"
 
-        echo "Lägger till control nodes pubkey på $TARGET_IP..."
-        ssh $SSH_OPTS ${var.ct_ssh_user}@$TARGET_IP \
-          "mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo '$ANSIBLE_PUBKEY' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
-      done
+      echo "Väntar på SSH till $TARGET_IP..."
+      until ssh $SSH_OPTS ${var.ct_ssh_user}@$TARGET_IP true 2>/dev/null; do sleep 5; done
+
+      echo "Sätter DNS på $TARGET_IP ($TARGET_GW)..."
+      ssh $SSH_OPTS ${var.ct_ssh_user}@$TARGET_IP \
+        "{ echo 'nameserver $TARGET_GW'; %{ for dns in var.dns_servers ~}echo 'nameserver ${dns}'; %{ endfor ~}} > /etc/resolv.conf"
+      if ! ssh $SSH_OPTS ${var.ct_ssh_user}@$TARGET_IP \
+        "python3 -c 'import socket; socket.setdefaulttimeout(2); socket.getaddrinfo(\"packages.ubuntu.com\", 80)' 2>/dev/null"; then
+        echo "WARNING: Gateway $TARGET_GW svarar inte på DNS — faller tillbaka på ${join(", ", var.dns_servers)}"
+      fi
+
+      echo "Lägger till control nodes pubkey på $TARGET_IP..."
+      ssh $SSH_OPTS ${var.ct_ssh_user}@$TARGET_IP \
+        "mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo '$ANSIBLE_PUBKEY' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+      %{ endfor ~}
 
       echo "Kopierar deploy key till ansible control..."
       scp $SSH_OPTS ${local_sensitive_file.deploy_private_key.filename} ${var.ct_ssh_user}@$CONTROL_IP:.ssh/deploy_ed25519
