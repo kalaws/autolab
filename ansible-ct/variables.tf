@@ -22,6 +22,11 @@ variable "ct_disk_storage" {
   default     = "local-lvm"
 }
 
+variable "ssh_public_key_path" {
+  type    = string
+  default = "~/.ssh/id_ed25519.pub"
+}
+
 variable "targets" {
   type        = list(string)
   description = "Namn på target-CT:ar"

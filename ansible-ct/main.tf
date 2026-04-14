@@ -75,7 +75,7 @@ resource "proxmox_virtual_environment_container" "ansible_control" {
     }
 
     user_account {
-      keys = [trimspace(tls_private_key.terraform_ssh.public_key_openssh)]
+      keys = [trimspace(tls_private_key.terraform_ssh.public_key_openssh), trimspace(file(pathexpand(var.ssh_public_key_path)))]
     }
   }
 
@@ -130,7 +130,7 @@ resource "proxmox_virtual_environment_container" "ansible_target" {
     }
 
     user_account {
-      keys = [trimspace(tls_private_key.terraform_ssh.public_key_openssh)]
+      keys = [trimspace(tls_private_key.terraform_ssh.public_key_openssh), trimspace(file(pathexpand(var.ssh_public_key_path)))]
     }
   }
 
