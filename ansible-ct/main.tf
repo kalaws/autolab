@@ -52,3 +52,53 @@ resource "local_sensitive_file" "terraform_ssh_private" {
   filename        = "${path.module}/.terraform_ed25519"
   file_permission = "0600"
 }
+
+# ============================================
+# 1. Ansible control CT
+# ============================================
+resource "proxmox_virtual_environment_container" "ansible_control" {
+  description = "Ansible control node (CT)"
+  node_name   = "pve"
+
+  initialization {
+    hostname = "LAB-ANSIBLE-CT-control"
+
+    ip_config {
+      ipv4 {
+        address = "dhcp"
+      }
+    }
+
+    user_account {
+      keys = [trimspace(tls_private_key.terraform_ssh.public_key_openssh)]
+    }
+  }
+
+  network_interface {
+    name   = "eth0"
+    bridge = var.bridge_wan
+  }
+
+  operating_system {
+    template_file_id = var.ct_template
+    type             = "ubuntu"
+  }
+
+  memory {
+    dedicated = 2048
+    swap      = 512
+  }
+
+  cpu {
+    architecture = "amd64"
+    cores        = 1
+  }
+
+  disk {
+    datastore_id = var.ct_disk_storage
+    size         = 8
+  }
+
+  started         = true
+  stop_on_destroy = true
+}
