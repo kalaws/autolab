@@ -107,6 +107,65 @@ resource "proxmox_virtual_environment_container" "ansible_control" {
   started = true
 }
 
+# ============================================
+# 2. Target CT:ar
+# ============================================
+resource "proxmox_virtual_environment_container" "ansible_target" {
+  for_each     = toset(var.targets)
+  description  = "Ansible target CT ${each.key}"
+  node_name    = "pve"
+  unprivileged = true
+
+  features {
+    nesting = true
+  }
+
+  initialization {
+    hostname = "LAB-ANSIBLE-CT-${each.key}"
+
+    ip_config {
+      ipv4 {
+        address = "dhcp"
+      }
+    }
+
+    user_account {
+      keys = [trimspace(tls_private_key.terraform_ssh.public_key_openssh)]
+    }
+  }
+
+  network_interface {
+    name   = "eth0"
+    bridge = var.bridge_wan
+  }
+
+  operating_system {
+    template_file_id = var.ct_template
+    type             = "ubuntu"
+  }
+
+  memory {
+    dedicated = 1024
+    swap      = 512
+  }
+
+  cpu {
+    architecture = "amd64"
+    cores        = 1
+  }
+
+  disk {
+    datastore_id = var.ct_disk_storage
+    size         = 8
+  }
+
+  started = true
+}
+
 locals {
   control_ip = proxmox_virtual_environment_container.ansible_control.ipv4["eth0"]
+  target_ips = {
+    for name, ct in proxmox_virtual_environment_container.ansible_target :
+    name => ct.ipv4["eth0"]
+  }
 }

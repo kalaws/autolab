@@ -21,3 +21,9 @@ variable "ct_disk_storage" {
   description = "Datastore för CT-diskar"
   default     = "local-lvm"
 }
+
+variable "targets" {
+  type        = list(string)
+  description = "Namn på target-CT:ar"
+  default     = ["target-1"]
+}
