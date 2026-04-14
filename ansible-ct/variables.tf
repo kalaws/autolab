@@ -1,3 +1,9 @@
+variable "ct_ssh_user" {
+  type        = string
+  description = "SSH-användare i CT:arna"
+  default     = "root"
+}
+
 variable "github_owner" {
   type        = string
   description = "GitHub-användarnamn eller organisation"
