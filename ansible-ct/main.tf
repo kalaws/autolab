@@ -100,5 +100,5 @@ resource "proxmox_virtual_environment_container" "ansible_control" {
   }
 
   started         = true
-  stop_on_destroy = true
 }
+

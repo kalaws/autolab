@@ -1,3 +1,8 @@
+variable "github_owner" {
+  type        = string
+  description = "GitHub-användarnamn eller organisation"
+  default     = "kalaws"
+
 variable "ct_template" {
   type        = string
   description = "LXC-template att använda (måste finnas på Proxmox-noden)"
@@ -15,4 +20,3 @@ variable "ct_disk_storage" {
   description = "Datastore för CT-diskar"
   default     = "local-lvm"
 }
-
