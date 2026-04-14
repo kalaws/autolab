@@ -6,10 +6,10 @@
     update_cache: true
 
 - name: Starta och aktivera nginx
-  ansible.builtin.apt:
+  ansible.builtin.service:
     name: nginx
     state: started
-    enale: true
+    enabled: true
 
 - name: Kontrollera att nginx körs
   ansible.builtin.debug:
