@@ -172,7 +172,6 @@ resource "proxmox_virtual_environment_container" "ansible_target" {
 
 locals {
   control_ip = proxmox_virtual_environment_container.ansible_control.ipv4["eth0"]
-  gateway    = "${join(".", slice(split(".", local.control_ip), 0, 3))}.1"
   target_ips = {
     for name, ct in proxmox_virtual_environment_container.ansible_target :
     name => ct.ipv4["eth0"]
@@ -197,12 +196,16 @@ resource "terraform_data" "install_ansible" {
       echo "Väntar på SSH till ansible_control ($CONTROL_IP)..."
       until ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP true 2>/dev/null; do sleep 5; done
 
-      echo "Sätter DNS på ansible control (${local.gateway})..."
+      echo "Hämtar gateway från ansible control..."
+      CONTROL_GW=$(ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP "ip route show default | awk '{print \$3; exit}'")
+      echo "Gateway: $CONTROL_GW"
+
+      echo "Konfigurerar DNS på ansible control ($CONTROL_GW)..."
       ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP \
-        "{ echo 'nameserver ${local.gateway}'; %{ for dns in var.dns_servers ~}echo 'nameserver ${dns}'; %{ endfor ~}} > /etc/resolv.conf"
+        "{ echo 'nameserver $CONTROL_GW'; %{ for dns in var.dns_servers ~}echo 'nameserver ${dns}'; %{ endfor ~}} > /etc/resolv.conf"
       if ! ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP \
         "python3 -c 'import socket; socket.setdefaulttimeout(2); socket.getaddrinfo(\"packages.ubuntu.com\", 80)' 2>/dev/null"; then
-        echo "WARNING: Gateway ${local.gateway} svarar inte på DNS — faller tillbaka på ${join(", ", var.dns_servers)}"
+        echo "WARNING: Gateway $CONTROL_GW svarar inte på DNS — faller tillbaka på ${join(", ", var.dns_servers)}"
       fi
 
       echo "Genererar SSH-nyckelpar på ansible control..."
@@ -215,12 +218,15 @@ resource "terraform_data" "install_ansible" {
       # Vänta på alla targets och lägg till pubkey
       %{ for name, ip in local.target_ips ~}
       TARGET_IP="${ip}"
-      TARGET_GW="${join(".", slice(split(".", ip), 0, 3))}.1"
 
       echo "Väntar på SSH till $TARGET_IP..."
       until ssh $SSH_OPTS ${var.ct_ssh_user}@$TARGET_IP true 2>/dev/null; do sleep 5; done
 
-      echo "Sätter DNS på $TARGET_IP ($TARGET_GW)..."
+      echo "Hämtar gateway från $TARGET_IP..."
+      TARGET_GW=$(ssh $SSH_OPTS ${var.ct_ssh_user}@$TARGET_IP "ip route show default | awk '{print \$3; exit}'")
+      echo "Gateway: $TARGET_GW"
+
+      echo "Konfigurerar DNS på $TARGET_IP ($TARGET_GW)..."
       ssh $SSH_OPTS ${var.ct_ssh_user}@$TARGET_IP \
         "{ echo 'nameserver $TARGET_GW'; %{ for dns in var.dns_servers ~}echo 'nameserver ${dns}'; %{ endfor ~}} > /etc/resolv.conf"
       if ! ssh $SSH_OPTS ${var.ct_ssh_user}@$TARGET_IP \
