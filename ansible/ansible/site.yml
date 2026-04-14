@@ -1,0 +1,7 @@
+---
+- name: Konfigurera alla targets
+  hosts: targets
+  become: true
+
+  roles:
+    - nginx
