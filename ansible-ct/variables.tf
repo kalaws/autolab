@@ -2,6 +2,7 @@ variable "github_owner" {
   type        = string
   description = "GitHub-användarnamn eller organisation"
   default     = "kalaws"
+}
 
 variable "ct_template" {
   type        = string
