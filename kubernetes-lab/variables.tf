@@ -17,3 +17,9 @@ variable "resources" {
     k8s_worker  = { cores = 2, memory = 4096, disk = 40 }     
   } 
 }
+
+variable "github_owner" {
+  type        = string
+  description = "GitHub-användarnamn eller organisation"
+  default     = "kalaws"
+}

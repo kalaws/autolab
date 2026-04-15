@@ -106,11 +106,11 @@ resource "proxmox_virtual_environment_container" "ansible" {
   }
 
   memory {
-    dedicated = var.resources.["ansible"].memory
+    dedicated = var.resources["ansible"].memory
   }
 
   cpu {
-    cores = var.resources.["ansible"].cores
+    cores = var.resources["ansible"].cores
   }
   
   disk {
@@ -147,11 +147,11 @@ resource "proxmox_virtual_environment_vm" "k8s_control" {
   }
 
   memory {
-    dedicated = var.resources.["k8s_control"].memory
+    dedicated = var.resources["k8s_control"].memory
   }
 
   cpu {
-    cores = var.resources.["k8s_control"].cores
+    cores = var.resources["k8s_control"].cores
   }
   
   disk {
