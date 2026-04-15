@@ -197,7 +197,6 @@ resource "terraform_data" "bootstrap_control" {
 # 4. Klona Kubernetes control node VM
 # ============================================
 resource "proxmox_virtual_environment_vm" "k8s_control" {
-  for_each  = toset(var.targets)
   name      = "LAB-K8S-control"
   node_name = "pve"
 

@@ -42,10 +42,10 @@ variable "dns_servers" {
   default     = ["8.8.8.8"]
 }
 
-variable "targets" {
+variable "workers" {
   type        = list(string)
-  description = "List of ansible targets"
-  default     = ["target-1"]
+  description = "Kubernetes worker nodes"
+  default     = ["worker-1"]
 }
 
 variable "ssh_public_key_path" {
