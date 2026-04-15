@@ -179,12 +179,11 @@ locals {
 }
 
 # ============================================
-# 3. Installera Ansible + konfigurera targets
+# 3. Bootstrappa control node
 # ============================================
-resource "terraform_data" "install_ansible" {
+resource "terraform_data" "bootstrap_control" {
   depends_on = [
     proxmox_virtual_environment_container.ansible_control,
-    proxmox_virtual_environment_container.ansible_target,
     github_repository_deploy_key.autolab,
   ]
 
@@ -212,10 +211,44 @@ resource "terraform_data" "install_ansible" {
       ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP \
         "ssh-keygen -t ed25519 -f ~/.ssh/ansible_ed25519 -N '' -C 'ansible-control'"
 
+      echo "Kopierar deploy key till ansible control..."
+      scp $SSH_OPTS ${local_sensitive_file.deploy_private_key.filename} ${var.ct_ssh_user}@$CONTROL_IP:.ssh/deploy_ed25519
+
+      echo "Skriver SSH-config på ansible control node..."
+      ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP \
+        "printf 'Host 10.*\n  User ${var.ct_ssh_user}\n  IdentityFile ~/.ssh/ansible_ed25519\n  StrictHostKeyChecking no\n\nHost github.com\n  IdentityFile ~/.ssh/deploy_ed25519\n  StrictHostKeyChecking no\n' > ~/.ssh/config && chmod 600 ~/.ssh/config"
+
+      echo "Installerar Ansible på ansible control node..."
+      ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP \
+        'apt-get update -qq && \
+         DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
+         DEBIAN_FRONTEND=noninteractive apt-get install -y ansible git && \
+         ansible --version'
+
+      echo "Klonar repot på ansible control node..."
+      ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP \
+        "git clone git@github.com:${var.github_owner}/autolab.git ~/autolab"
+    EOT
+  }
+}
+
+# ============================================
+# 4. Konfigurera target-noder
+# ============================================
+resource "terraform_data" "configure_targets" {
+  depends_on = [
+    proxmox_virtual_environment_container.ansible_target,
+    terraform_data.bootstrap_control,
+  ]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      CONTROL_IP="${local.control_ip}"
+      SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
+
       echo "Hämtar pubkey från ansible control..."
       ANSIBLE_PUBKEY=$(ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP "cat ~/.ssh/ansible_ed25519.pub")
 
-      # Vänta på alla targets och lägg till pubkey
       %{ for name, ip in local.target_ips ~}
       TARGET_IP="${ip}"
 
@@ -239,27 +272,9 @@ resource "terraform_data" "install_ansible" {
         "mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo '$ANSIBLE_PUBKEY' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
       %{ endfor ~}
 
-      echo "Kopierar deploy key till ansible control..."
-      scp $SSH_OPTS ${local_sensitive_file.deploy_private_key.filename} ${var.ct_ssh_user}@$CONTROL_IP:.ssh/deploy_ed25519
-
-      echo "Skriver SSH-config på ansible control node..."
-      ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP \
-        "printf 'Host 10.*\n  User ${var.ct_ssh_user}\n  IdentityFile ~/.ssh/ansible_ed25519\n  StrictHostKeyChecking no\n\nHost github.com\n  IdentityFile ~/.ssh/deploy_ed25519\n  StrictHostKeyChecking no\n' > ~/.ssh/config && chmod 600 ~/.ssh/config"
-
       echo "Skriver inventory på ansible control node..."
       ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP \
         "printf '[targets]\n${join("\\n", [for name, ip in local.target_ips : "${ip} ansible_user=${var.ct_ssh_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519"])}\n' > ~/inventory.ini"
-
-      echo "Installerar Ansible på ansible control node..."
-      ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP \
-        'apt-get update -qq && \
-         DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
-         DEBIAN_FRONTEND=noninteractive apt-get install -y ansible git && \
-         ansible --version'
-
-      echo "Klonar repot på ansible control node..."
-      ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP \
-        "git clone git@github.com:${var.github_owner}/autolab.git ~/autolab"
     EOT
   }
 }
