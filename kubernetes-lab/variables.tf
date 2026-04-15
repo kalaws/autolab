@@ -23,3 +23,9 @@ variable "github_owner" {
   description = "GitHub-användarnamn eller organisation"
   default     = "kalaws"
 }
+
+variable "bridge_wan" {
+  type        = string
+  description = "Bridge för WAN-nät"
+  default     = "vnet1"
+}
