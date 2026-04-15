@@ -4,6 +4,12 @@ variable "packer_template" {
   default     = ["ubuntu-2404-q35-template"]
 }
 
+variable "ct_template" {
+  type        = string
+  description = "LXC-template att använda (måste finnas på Proxmox-noden)"
+  default     = "local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
+}
+
 variable "resources" {   
   description = "VM configurations for Kubernetes lab"   
   type = map(object({     
@@ -30,12 +36,6 @@ variable "bridge_wan" {
   default     = "vnet1"
 }
 
-variable "ct_template" {
-  type        = string
-  description = "LXC-template att använda (måste finnas på Proxmox-noden)"
-  default     = "local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
-}
-
 variable "dns_servers" {
   type        = list(string)
   description = "DNS-servrar för CT:arna, utöver gateway"
@@ -46,4 +46,9 @@ variable "targets" {
   type        = list(string)
   description = "List of ansible targets"
   default     = ["target-1"]
+}
+
+variable "ssh_public_key_path" {
+  type    = string
+  default = "~/.ssh/id_ed25519.pub"
 }
