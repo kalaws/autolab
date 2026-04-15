@@ -53,6 +53,17 @@ resource "local_sensitive_file" "terraform_ssh_private" {
   file_permission = "0600"
 }
 
+# SSH-nyckel för ansible control → targets (injiceras i targets via API, privnyckel kopieras till control)
+resource "tls_private_key" "ansible_ssh" {
+  algorithm = "ED25519"
+}
+
+resource "local_sensitive_file" "ansible_ssh_private" {
+  content         = tls_private_key.ansible_ssh.private_key_openssh
+  filename        = "${path.module}/.ansible_ed25519"
+  file_permission = "0600"
+}
+
 # ============================================
 # 1. Ansible control CT
 # ============================================
@@ -138,7 +149,7 @@ resource "proxmox_virtual_environment_container" "ansible_target" {
     }
 
     user_account {
-      keys = [trimspace(tls_private_key.terraform_ssh.public_key_openssh), trimspace(file(pathexpand(var.ssh_public_key_path)))]
+      keys = [trimspace(tls_private_key.ansible_ssh.public_key_openssh), trimspace(file(pathexpand(var.ssh_public_key_path)))]
     }
   }
 
@@ -207,9 +218,9 @@ resource "terraform_data" "bootstrap_control" {
         echo "WARNING: Gateway $CONTROL_GW svarar inte på DNS — faller tillbaka på ${join(", ", var.dns_servers)}"
       fi
 
-      echo "Genererar SSH-nyckelpar på ansible control..."
-      ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP \
-        "ssh-keygen -t ed25519 -f ~/.ssh/ansible_ed25519 -N '' -C 'ansible-control'"
+      echo "Kopierar ansible SSH-nyckel till control node..."
+      scp $SSH_OPTS ${local_sensitive_file.ansible_ssh_private.filename} ${var.ct_ssh_user}@$CONTROL_IP:.ssh/ansible_ed25519
+      ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP "chmod 600 ~/.ssh/ansible_ed25519"
 
       echo "Kopierar deploy key till ansible control..."
       scp $SSH_OPTS ${local_sensitive_file.deploy_private_key.filename} ${var.ct_ssh_user}@$CONTROL_IP:.ssh/deploy_ed25519
@@ -244,36 +255,31 @@ resource "terraform_data" "configure_targets" {
   provisioner "local-exec" {
     command = <<-EOT
       CONTROL_IP="${local.control_ip}"
-      SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
-
-      echo "Hämtar pubkey från ansible control..."
-      ANSIBLE_PUBKEY=$(ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP "cat ~/.ssh/ansible_ed25519.pub")
+      CONTROL_SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
+      TARGET_SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.ansible_ssh_private.filename}"
 
       %{ for name, ip in local.target_ips ~}
       TARGET_IP="${ip}"
 
       echo "Väntar på SSH till $TARGET_IP..."
-      until ssh $SSH_OPTS ${var.ct_ssh_user}@$TARGET_IP true 2>/dev/null; do sleep 5; done
+      until ssh $TARGET_SSH_OPTS ${var.ct_ssh_user}@$TARGET_IP true 2>/dev/null; do sleep 5; done
 
       echo "Hämtar gateway från $TARGET_IP..."
-      TARGET_GW=$(ssh $SSH_OPTS ${var.ct_ssh_user}@$TARGET_IP "ip route show default | awk '{print \$3; exit}'")
+      TARGET_GW=$(ssh $TARGET_SSH_OPTS ${var.ct_ssh_user}@$TARGET_IP "ip route show default | awk '{print \$3; exit}'")
       echo "Gateway: $TARGET_GW"
 
       echo "Konfigurerar DNS på $TARGET_IP ($TARGET_GW)..."
-      ssh $SSH_OPTS ${var.ct_ssh_user}@$TARGET_IP \
+      ssh $TARGET_SSH_OPTS ${var.ct_ssh_user}@$TARGET_IP \
         "{ echo 'nameserver $TARGET_GW'; %{ for dns in var.dns_servers ~}echo 'nameserver ${dns}'; %{ endfor ~}} > /etc/resolv.conf"
-      if ! ssh $SSH_OPTS ${var.ct_ssh_user}@$TARGET_IP \
+      if ! ssh $TARGET_SSH_OPTS ${var.ct_ssh_user}@$TARGET_IP \
         "python3 -c 'import socket; socket.setdefaulttimeout(2); socket.getaddrinfo(\"packages.ubuntu.com\", 80)' 2>/dev/null"; then
         echo "WARNING: Gateway $TARGET_GW svarar inte på DNS — faller tillbaka på ${join(", ", var.dns_servers)}"
       fi
 
-      echo "Lägger till control nodes pubkey på $TARGET_IP..."
-      ssh $SSH_OPTS ${var.ct_ssh_user}@$TARGET_IP \
-        "mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo '$ANSIBLE_PUBKEY' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
       %{ endfor ~}
 
       echo "Skriver inventory på ansible control node..."
-      ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP \
+      ssh $CONTROL_SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP \
         "printf '[targets]\n${join("\\n", [for name, ip in local.target_ips : "${ip} ansible_user=${var.ct_ssh_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519"])}\n' > ~/inventory.ini"
     EOT
   }
