@@ -134,7 +134,7 @@ resource "proxmox_virtual_environment_container" "ansible" {
 locals {
   control_ip = proxmox_virtual_environment_container.ansible.ipv4["eth0"]
   target_ips = {
-    for name, vm in proxmox_virtual_environment_container.k8s_control :
+    for name, vm in proxmox_virtual_environment_vm.k8s_control :
     name => vm.ipv4_addresses["eth0"]
   }
 }
