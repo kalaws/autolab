@@ -75,13 +75,34 @@ data "proxmox_virtual_environment_vms" "packer_template" {
   }
 }
 
-# Ansible control node
-resource "proxmox_virtual_environment_vm" "ansible" {
-  name      = "LAB-KUBERNETES-ansible"
-  node_name = "pve"
+# ============================================
+# 2. Klona Ansible control node CT
+# ============================================
+resource "proxmox_virtual_environment_container" "ansible" {
+  description = "Ansible control node (CT)"
+  node_name   = "pve"
+  unprivileged = true
 
-  clone {
-    vm_id = data.proxmox_virtual_environment_vms.packer_template.vms[0].vm_id
+  features {
+    nesting = true
+  }
+
+  initialization {
+    hostname = "LAB-K8S-ansible"
+
+    dns {
+      servers = var.dns_servers
+    }
+
+    ip_config {
+      ipv4 {
+        address = "dhcp"
+      }
+    }
+
+    user_account {
+      keys = [trimspace(tls_private_key.terraform_ssh.public_key_openssh), trimspace(file(pathexpand(var.ssh_public_key_path)))]
+    }
   }
 
   memory {
@@ -100,29 +121,25 @@ resource "proxmox_virtual_environment_vm" "ansible" {
     size         = var.resources["ansible"].disk  
   }
 
-  network_device {
+  network_interface {
+    name   = "eth0"
     bridge = var.bridge_wan
   }
 
-  initialization {
-    ip_config {
-      ipv4 {
-        address = "dhcp"
-      }
-    }
+  operating_system {
+    template_file_id = var.ct_template
+    type             = "ubuntu"
   }
 
-  stop_on_destroy = true
-
-  agent {
-    enabled = true
-  }
+  started = true
 }
 
-# Target nodes
+# ============================================
+# 2. Klona Kubernetes control node VM
+# ============================================
 resource "proxmox_virtual_environment_vm" "k8s_control" {
   for_each  = toset(var.targets)
-  name      = "LAB-ANSIBLE-${each.key}"
+  name      = "LAB-K8S-control"
   node_name = "pve"
 
   clone {
