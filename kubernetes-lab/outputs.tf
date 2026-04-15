@@ -3,8 +3,12 @@ output "ansible" {
 }
 
 output "k8s_control" {
-  value = {
-    for name, vm in proxmox_virtual_environment_vm.k8s_control :
-    name => try(vm.ipv4_addresses[1][0], "not available yet")
-  }
+  value = try(proxmox_virtual_environment_vm.k8s_control.ipv4_addresses[1][0], "not available yet")
+}
+
+output "k8s_workers" {
+  value = [
+    for vm in proxmox_virtual_environment_vm.k8s_worker :
+    try(vm.ipv4_addresses[1][0], "not available yet")
+  ]
 }
