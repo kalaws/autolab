@@ -76,7 +76,7 @@ data "proxmox_virtual_environment_vms" "packer_template" {
 }
 
 # Ansible control node
-resource "proxmox_virtual_environment_vm" "ansible_control" {
+resource "proxmox_virtual_environment_vm" "ansible" {
   name      = "LAB-KUBERNETES-ansible"
   node_name = "pve"
 
@@ -85,7 +85,64 @@ resource "proxmox_virtual_environment_vm" "ansible_control" {
   }
 
   memory {
-    dedicated = 2048
+    dedicated = var.resources.["ansible"].memory
+  }
+
+  cpu {
+    cores = var.resources.["ansible"].cores
+  }
+  
+  disk {
+    datastore_id = "local-lvm"     
+    interface    = "virtio0"     
+    iothread     = true     
+    discard      = "on"     
+    size         = var.resources["ansible"].disk  
+  }
+
+  network_device {
+    bridge = var.bridge_wan
+  }
+
+  initialization {
+    ip_config {
+      ipv4 {
+        address = "dhcp"
+      }
+    }
+  }
+
+  stop_on_destroy = true
+
+  agent {
+    enabled = true
+  }
+}
+
+# Target nodes
+resource "proxmox_virtual_environment_vm" "k8s_control" {
+  for_each  = toset(var.targets)
+  name      = "LAB-ANSIBLE-${each.key}"
+  node_name = "pve"
+
+  clone {
+    vm_id = data.proxmox_virtual_environment_vms.packer_template.vms[0].vm_id
+  }
+
+  memory {
+    dedicated = var.resources.["k8s_control"].memory
+  }
+
+  cpu {
+    cores = var.resources.["k8s_control"].cores
+  }
+  
+  disk {
+    datastore_id = "local-lvm"     
+    interface    = "virtio0"     
+    iothread     = true     
+    discard      = "on"     
+    size         = var.resources["k8s_control"].disk  
   }
 
   network_device {
