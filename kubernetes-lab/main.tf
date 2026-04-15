@@ -292,3 +292,32 @@ resource "proxmox_virtual_environment_vm" "k8s_worker" {
     enabled = true
   }
 }
+
+# ============================================
+# 6. Konfigurera target-noder
+# ============================================
+resource "terraform_data" "configure_targets" {
+  depends_on = [
+    proxmox_virtual_environment_vm.k8s_control,
+    proxmox_virtual_environment_vm.k8s_worker,
+    terraform_data.bootstrap_control,
+  ]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      CONTROL_IP="${local.control_ip}"
+      CONTROL_SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
+      TARGET_SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.ansible_ssh_private.filename}"
+
+      %{ for name, ip in local.target_ips ~}
+      TARGET_IP="${ip}"
+      echo "Väntar på SSH till $TARGET_IP..."
+      until ssh $TARGET_SSH_OPTS ${var.ct_ssh_user}@$TARGET_IP true 2>/dev/null; do sleep 5; done
+      %{ endfor ~}
+
+      echo "Skriver inventory på ansible control node..."
+      ssh $CONTROL_SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP \
+        "printf '[targets]\n${join("\\n", [for name, ip in local.target_ips : "${ip} ansible_user=${var.ct_ssh_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519"])}\n' > ~/inventory.ini"
+    EOT
+  }
+}
