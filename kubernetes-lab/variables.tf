@@ -41,3 +41,9 @@ variable "dns_servers" {
   description = "DNS-servrar för CT:arna, utöver gateway"
   default     = ["8.8.8.8"]
 }
+
+variable "targets" {
+  type        = list(string)
+  description = "List of ansible targets"
+  default     = ["target-1"]
+}
