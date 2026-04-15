@@ -230,6 +230,10 @@ resource "proxmox_virtual_environment_vm" "k8s_control" {
         address = "dhcp"
       }
     }
+
+    user_account {
+      keys = [trimspace(tls_private_key.ansible_ssh.public_key_openssh)]
+    }
   }
 
   stop_on_destroy = true
