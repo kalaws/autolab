@@ -41,3 +41,14 @@ resource "github_repository_deploy_key" "autolab" {
   key        = tls_private_key.deploy_key.public_key_openssh
   read_only  = true
 }
+
+# SSH-nyckel för Terraform → CT-åtkomst (injiceras via user_account.keys)
+resource "tls_private_key" "terraform_ssh" {
+  algorithm = "ED25519"
+}
+
+resource "local_sensitive_file" "terraform_ssh_private" {
+  content         = tls_private_key.terraform_ssh.private_key_openssh
+  filename        = "${path.module}/.terraform_ed25519"
+  file_permission = "0600"
+}
