@@ -58,8 +58,3 @@ variable "ct_ssh_user" {
   description = "SSH-användare i CT:arna"
   default     = "root"
 }
-
-variable "workers" {
-  type    = list(string)
-  default = ["1", "2"]
-}
