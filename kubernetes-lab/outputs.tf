@@ -4,7 +4,7 @@ output "ansible" {
 
 output "k8s_control" {
   value = {
-    for name, ct in proxmox_virtual_environment_vm.k8s_control :
-    name => try(ct.ipv4["eth0"], "not available yet")
+    for name, vm in proxmox_virtual_environment_vm.k8s_control :
+    name => try(vm.ipv4[0], "not available yet")
   }
 }
