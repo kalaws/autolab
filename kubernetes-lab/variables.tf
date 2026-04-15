@@ -35,3 +35,9 @@ variable "ct_template" {
   description = "LXC-template att använda (måste finnas på Proxmox-noden)"
   default     = "local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
 }
+
+variable "dns_servers" {
+  type        = list(string)
+  description = "DNS-servrar för CT:arna, utöver gateway"
+  default     = ["8.8.8.8"]
+}
