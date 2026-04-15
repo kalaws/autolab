@@ -115,9 +115,6 @@ resource "proxmox_virtual_environment_container" "ansible" {
   
   disk {
     datastore_id = "local-lvm"     
-    interface    = "virtio0"     
-    iothread     = true     
-    discard      = "on"     
     size         = var.resources["ansible"].disk  
   }
 
