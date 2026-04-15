@@ -154,40 +154,40 @@ resource "terraform_data" "bootstrap_control" {
       SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
 
       echo "Väntar på SSH till ansible_control ($CONTROL_IP)..."
-      until ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP true 2>/dev/null; do sleep 5; done
+      until ssh $SSH_OPTS ${var.ssh_user}@$CONTROL_IP true 2>/dev/null; do sleep 5; done
 
       echo "Hämtar gateway från ansible control..."
-      CONTROL_GW=$(ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP "ip route show default | awk '{print \$3; exit}'")
+      CONTROL_GW=$(ssh $SSH_OPTS ${var.ssh_user}@$CONTROL_IP "ip route show default | awk '{print \$3; exit}'")
       echo "Gateway: $CONTROL_GW"
 
       echo "Konfigurerar DNS på ansible control ($CONTROL_GW)..."
-      ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP \
+      ssh $SSH_OPTS ${var.ssh_user}@$CONTROL_IP \
         "{ echo 'nameserver $CONTROL_GW'; %{ for dns in var.dns_servers ~}echo 'nameserver ${dns}'; %{ endfor ~}} > /etc/resolv.conf"
-      if ! ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP \
+      if ! ssh $SSH_OPTS ${var.ssh_user}@$CONTROL_IP \
         "python3 -c 'import socket; socket.setdefaulttimeout(2); socket.getaddrinfo(\"packages.ubuntu.com\", 80)' 2>/dev/null"; then
         echo "WARNING: Gateway $CONTROL_GW svarar inte på DNS — faller tillbaka på ${join(", ", var.dns_servers)}"
       fi
 
       echo "Kopierar ansible SSH-nyckel till control node..."
-      scp $SSH_OPTS ${local_sensitive_file.ansible_ssh_private.filename} ${var.ct_ssh_user}@$CONTROL_IP:.ssh/ansible_ed25519
-      ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP "chmod 600 ~/.ssh/ansible_ed25519"
+      scp $SSH_OPTS ${local_sensitive_file.ansible_ssh_private.filename} ${var.ssh_user}@$CONTROL_IP:.ssh/ansible_ed25519
+      ssh $SSH_OPTS ${var.ssh_user}@$CONTROL_IP "chmod 600 ~/.ssh/ansible_ed25519"
 
       echo "Kopierar deploy key till ansible control..."
-      scp $SSH_OPTS ${local_sensitive_file.deploy_private_key.filename} ${var.ct_ssh_user}@$CONTROL_IP:.ssh/deploy_ed25519
+      scp $SSH_OPTS ${local_sensitive_file.deploy_private_key.filename} ${var.ssh_user}@$CONTROL_IP:.ssh/deploy_ed25519
 
       echo "Skriver SSH-config på ansible control node..."
-      ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP \
-        "printf 'Host 10.*\n  User ${var.ct_ssh_user}\n  IdentityFile ~/.ssh/ansible_ed25519\n  StrictHostKeyChecking no\n\nHost github.com\n  IdentityFile ~/.ssh/deploy_ed25519\n  StrictHostKeyChecking no\n' > ~/.ssh/config && chmod 600 ~/.ssh/config"
+      ssh $SSH_OPTS ${var.ssh_user}@$CONTROL_IP \
+        "printf 'Host 10.*\n  User ${var.ssh_user}\n  IdentityFile ~/.ssh/ansible_ed25519\n  StrictHostKeyChecking no\n\nHost github.com\n  IdentityFile ~/.ssh/deploy_ed25519\n  StrictHostKeyChecking no\n' > ~/.ssh/config && chmod 600 ~/.ssh/config"
 
       echo "Installerar Ansible på ansible control node..."
-      ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP \
+      ssh $SSH_OPTS ${var.ssh_user}@$CONTROL_IP \
         'apt-get update -qq && \
          DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
          DEBIAN_FRONTEND=noninteractive apt-get install -y ansible git && \
          ansible --version'
 
       echo "Klonar repot på ansible control node..."
-      ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP \
+      ssh $SSH_OPTS ${var.ssh_user}@$CONTROL_IP \
         "git clone git@github.com:${var.github_owner}/autolab.git ~/autolab"
     EOT
   }
@@ -312,12 +312,12 @@ resource "terraform_data" "configure_targets" {
       %{ for name, ip in local.target_ips ~}
       TARGET_IP="${ip}"
       echo "Väntar på SSH till $TARGET_IP..."
-      until ssh $TARGET_SSH_OPTS ${var.ct_ssh_user}@$TARGET_IP true 2>/dev/null; do sleep 5; done
+      until ssh $TARGET_SSH_OPTS ${var.ssh_user}@$TARGET_IP true 2>/dev/null; do sleep 5; done
       %{ endfor ~}
 
       echo "Skriver inventory på ansible control node..."
-      ssh $CONTROL_SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP \
-        "printf '[targets]\n${join("\\n", [for name, ip in local.target_ips : "${ip} ansible_user=${var.ct_ssh_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519"])}\n' > ~/inventory.ini"
+      ssh $CONTROL_SSH_OPTS ${var.ssh_user}@$CONTROL_IP \
+        "printf '[targets]\n${join("\\n", [for name, ip in local.target_ips : "${ip} ansible_user=${var.ssh_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519"])}\n' > ~/inventory.ini"
     EOT
   }
 }
