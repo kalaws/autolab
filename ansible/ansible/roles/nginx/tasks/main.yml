@@ -1,0 +1,16 @@
+---
+- name: Installera nginx
+  ansible.builtin.apt:
+    name: nginx
+    state: present
+    update_cache: true
+
+- name: Starta och aktivera nginx
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: true
+
+- name: Kontrollera att nginx körs
+  ansible.builtin.debug:
+    msg: "✅ nginx är installerat och igång!"
