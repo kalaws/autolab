@@ -1,7 +1,10 @@
-output "ansible_ip" {
-  value = try(proxmox_virtual_environment_container.ansible.network_interface[0].ip_address, "not available yet")
+output "ansible_control_ip" {
+  value = try(proxmox_virtual_environment_container.ansible.ipv4["eth0"], "not available yet")
 }
 
-output "k8s_control_ip" {
-  value = try(proxmox_virtual_environment_vm.k8s_control["LAB-K8S-control"].ipv4_addresses[1][0], "not available yet")
+output "ansible_target_ips" {
+  value = {
+    for name, ct in proxmox_virtual_environment_container.k8s_control :
+    name => try(ct.ipv4["eth0"], "not available yet")
+  }
 }
