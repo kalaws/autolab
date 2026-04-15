@@ -74,3 +74,35 @@ data "proxmox_virtual_environment_vms" "packer_template" {
     values = var.packer_template
   }
 }
+
+# Ansible control node
+resource "proxmox_virtual_environment_vm" "ansible_control" {
+  name      = "LAB-KUBERNETES-ansible"
+  node_name = "pve"
+
+  clone {
+    vm_id = data.proxmox_virtual_environment_vms.packer_template.vms[0].vm_id
+  }
+
+  memory {
+    dedicated = 2048
+  }
+
+  network_device {
+    bridge = var.bridge_wan
+  }
+
+  initialization {
+    ip_config {
+      ipv4 {
+        address = "dhcp"
+      }
+    }
+  }
+
+  stop_on_destroy = true
+
+  agent {
+    enabled = true
+  }
+}
