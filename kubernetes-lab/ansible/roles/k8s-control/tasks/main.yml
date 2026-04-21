@@ -7,23 +7,23 @@
   args:
     creates: /etc/kubernetes/admin.conf
 
-- name: Create .kube dir for root
+- name: Create .kube dir for ubuntu
   file:
-    path: /root/.kube
+    path: /ubuntu/.kube
     state: directory
     mode: "0700"
 
-- name: Copy kubeconfig for root
+- name: Copy kubeconfig for ubuntu
   copy:
     src: /etc/kubernetes/admin.conf
-    dest: /root/.kube/config
+    dest: /ubuntu/.kube/config
     remote_src: true
     mode: "0600"
 
 - name: Install Calico
   command: kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.0/manifests/calico.yaml
   environment:
-    KUBECONFIG: /root/.kube/config
+    KUBECONFIG: /ubuntu/.kube/config
 
 - name: Get join command
   command: kubeadm token create --print-join-command
