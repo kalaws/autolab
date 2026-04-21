@@ -115,10 +115,3 @@
   systemd:
     name: kubelet
     enabled: true
-
-handlers:
-  - name: Restart containerd
-    systemd:
-      name: containerd
-      state: restarted
-
