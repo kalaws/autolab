@@ -7,27 +7,27 @@
   args:
     creates: /etc/kubernetes/admin.conf
 
-- name: Create .kube dir for ubuntu
+- name: Create .kube dir for ansible
   file:
-    path: /home/ubuntu/.kube
+    path: /home/ansible/.kube
     state: directory
-    owner: ubuntu
-    group: ubuntu
+    owner: ansible
+    group: ansible
     mode: "0700"
 
-- name: Copy kubeconfig for ubuntu
+- name: Copy kubeconfig for ansible
   copy:
     src: /etc/kubernetes/admin.conf
-    dest: /home/ubuntu/.kube/config
+    dest: /home/ansible/.kube/config
     remote_src: true
-    owner: ubuntu
-    group: ubuntu
+    owner: ansible
+    group: ansible
     mode: "0600"
 
 - name: Install Calico
   command: kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.0/manifests/calico.yaml
   environment:
-    KUBECONFIG: /ubuntu/.kube/config
+    KUBECONFIG: /ansible/.kube/config
 
 - name: Get join command
   command: kubeadm token create --print-join-command

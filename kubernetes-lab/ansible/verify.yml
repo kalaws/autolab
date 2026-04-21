@@ -3,7 +3,7 @@
   hosts: control_plane
   become: true
   vars:
-    kubeconfig: /home/ubuntu/.kube/config
+    kubeconfig: /home/ansible/.kube/config
 
   tasks:
     - name: Hämta nodstatus

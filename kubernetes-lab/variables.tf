@@ -53,14 +53,14 @@ variable "ssh_public_key_path" {
   default = "~/.ssh/id_ed25519.pub"
 }
 
-variable "ssh_user" {
+variable "terraform_ssh_user" {
   type        = string
-  description = "SSH-användare i CT:arna"
-  default     = "root"
+  description = "Dedikerad Terraform-användare på ansible control node"
+  default     = "terraform"
 }
 
-variable "k8s_ssh_user" {
+variable "ansible_user" {
   type        = string
-  description = "SSH-användare i k8s-noderna"
-  default     = "ubuntu"
+  description = "Ansible-användare på k8s-noder"
+  default     = "ansible"
 }
