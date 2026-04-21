@@ -15,7 +15,7 @@
 
     - name: Tolka nodinformation
       set_fact:
-        nodes: "{{ (nodes_json.stdout | from_json).items }}"
+        nodes: "{{ (nodes_json.stdout | from_json)['items'] }}"
 
     - name: Kontrollera att alla noder är Ready
       assert:
