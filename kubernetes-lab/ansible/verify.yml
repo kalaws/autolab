@@ -13,40 +13,44 @@
       register: nodes_json
       changed_when: false
 
-    - name: Tolka nodinformation
+    - name: Extrahera noddata
       set_fact:
-        nodes: "{{ (nodes_json.stdout | from_json)['items'] }}"
+        nodes: >-
+          {{
+            (nodes_json.stdout | from_json)['items'] | map('combine', {}) | list
+            | json_query('[].{
+                name: metadata.name,
+                ready: status.conditions[?type==`Ready`].status | [0],
+                labels: keys(metadata.labels)
+              }')
+          }}
 
     - name: Kontrollera att alla noder är Ready
       assert:
-        that: >
-          item.status.conditions
-          | selectattr('type', 'equalto', 'Ready')
-          | map(attribute='status')
-          | first == 'True'
-        fail_msg: "Nod {{ item.metadata.name }} är inte Ready"
-        success_msg: "Nod {{ item.metadata.name }} är Ready"
+        that: item.ready == 'True'
+        fail_msg: "{{ item.name }} är inte Ready"
+        success_msg: "{{ item.name }} är Ready"
       loop: "{{ nodes }}"
       loop_control:
-        label: "{{ item.metadata.name }}"
+        label: "{{ item.name }}"
 
     - name: Kontrollera att control plane har rätt roll
       assert:
-        that: "'node-role.kubernetes.io/control-plane' in item.metadata.labels"
-        fail_msg: "{{ item.metadata.name }} saknar control-plane-roll"
-        success_msg: "{{ item.metadata.name }} har control-plane-roll"
-      loop: "{{ nodes | selectattr('metadata.labels', 'search', 'control-plane') | list }}"
+        that: "'node-role.kubernetes.io/control-plane' in item.labels"
+        fail_msg: "{{ item.name }} saknar control-plane-roll"
+        success_msg: "{{ item.name }} har control-plane-roll"
+      loop: "{{ nodes | rejectattr('labels', 'contains', 'node-role.kubernetes.io/worker') | list }}"
       loop_control:
-        label: "{{ item.metadata.name }}"
+        label: "{{ item.name }}"
 
     - name: Kontrollera att workers har rätt roll
       assert:
-        that: "'node-role.kubernetes.io/worker' in item.metadata.labels"
-        fail_msg: "{{ item.metadata.name }} saknar worker-roll"
-        success_msg: "{{ item.metadata.name }} har worker-roll"
-      loop: "{{ nodes | rejectattr('metadata.labels', 'search', 'control-plane') | list }}"
+        that: "'node-role.kubernetes.io/worker' in item.labels"
+        fail_msg: "{{ item.name }} saknar worker-roll"
+        success_msg: "{{ item.name }} har worker-roll"
+      loop: "{{ nodes | rejectattr('labels', 'contains', 'node-role.kubernetes.io/control-plane') | list }}"
       loop_control:
-        label: "{{ item.metadata.name }}"
+        label: "{{ item.name }}"
 
     - name: Kontrollera att kube-system-poddar är Running
       command: >
@@ -64,13 +68,13 @@
         fail_msg: "Följande poddar i kube-system är inte Running:\n{{ not_running.stdout }}"
         success_msg: "Alla kube-system-poddar kör"
 
-    - name: Kontrollera Calico-noder
-      command: kubectl get nodes -o wide --no-headers
+    - name: Visa nodöversikt
+      command: kubectl get nodes -o wide
       environment:
         KUBECONFIG: "{{ kubeconfig }}"
       register: nodes_wide
       changed_when: false
 
-    - name: Visa nodöversikt
+    - name: Skriv ut nodöversikt
       debug:
         msg: "{{ nodes_wide.stdout_lines }}"
