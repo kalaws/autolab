@@ -51,6 +51,7 @@
       - ca-certificates
       - curl
       - gnupg
+      - conntrack
     state: present
     update_cache: true
 
