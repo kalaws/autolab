@@ -9,15 +9,19 @@
 
 - name: Create .kube dir for ubuntu
   file:
-    path: /ubuntu/.kube
+    path: /home/ubuntu/.kube
     state: directory
+    owner: ubuntu
+    group: ubuntu
     mode: "0700"
 
 - name: Copy kubeconfig for ubuntu
   copy:
     src: /etc/kubernetes/admin.conf
-    dest: /ubuntu/.kube/config
+    dest: /home/ubuntu/.kube/config
     remote_src: true
+    owner: ubuntu
+    group: ubuntu
     mode: "0600"
 
 - name: Install Calico
