@@ -5,7 +5,7 @@
     creates: /etc/kubernetes/kubelet.conf
 
 - name: Sätt worker-label
-  command: kubectl label node {{ ansible_hostname }} node-role.kubernetes.io/worker= --overwrite
+  command: kubectl label node {{ ansible_hostname | lower }} node-role.kubernetes.io/worker= --overwrite
   delegate_to: "{{ groups['control_plane'][0] }}"
   environment:
     KUBECONFIG: /home/ubuntu/.kube/config
