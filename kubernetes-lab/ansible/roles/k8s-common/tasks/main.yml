@@ -1,4 +1,29 @@
 ---
+- name: Skapa admin-användare
+  user:
+    name: admin
+    groups: sudo
+    shell: /bin/bash
+    create_home: true
+
+- name: Lägg till SSH-nyckel för admin
+  authorized_key:
+    user: admin
+    key: "{{ admin_ssh_key }}"
+    state: present
+
+- name: Ge admin sudo utan lösenord
+  copy:
+    dest: /etc/sudoers.d/admin
+    content: "admin ALL=(ALL) NOPASSWD:ALL\n"
+    mode: "0440"
+
+- name: Ta bort packer-användare
+  user:
+    name: packer
+    state: absent
+    remove: true
+
 - name: Disable swap
   command: swapoff -a
 

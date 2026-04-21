@@ -65,40 +65,7 @@ resource "local_sensitive_file" "ansible_ssh_private" {
 }
 
 # ============================================
-# 1. Cloud-config för VMs (skapar rätt användare vid boot)
-# ============================================
-resource "proxmox_virtual_environment_file" "cloud_config" {
-  content_type = "snippets"
-  datastore_id = "local"
-  node_name    = "pve"
-
-  source_raw {
-    data = <<-EOF
-      #cloud-config
-      users:
-        - name: ${var.ansible_user}
-          groups: [sudo]
-          lock_passwd: true
-          sudo: ALL=(ALL) NOPASSWD:ALL
-          shell: /bin/bash
-          ssh_authorized_keys:
-            - ${trimspace(tls_private_key.ansible_ssh.public_key_openssh)}
-        - name: admin
-          groups: [sudo]
-          lock_passwd: true
-          sudo: ALL=(ALL) NOPASSWD:ALL
-          shell: /bin/bash
-          ssh_authorized_keys:
-            - ${trimspace(file(pathexpand(var.ssh_public_key_path)))}
-      runcmd:
-        - userdel -r packer || true
-    EOF
-    file_name = "k8s-cloud-config.yaml"
-  }
-}
-
-# ============================================
-# 2. Slå upp Packer-byggt template
+# 1. Slå upp Packer-byggt template
 # ============================================
 data "proxmox_virtual_environment_vms" "packer_template" {
   node_name = "pve"
@@ -109,7 +76,7 @@ data "proxmox_virtual_environment_vms" "packer_template" {
 }
 
 # ============================================
-# 3. Klona Ansible control node CT
+# 2. Klona Ansible control node CT
 # ============================================
 resource "proxmox_virtual_environment_container" "ansible" {
   description = "Ansible control node (CT)"
@@ -173,7 +140,7 @@ locals {
 }
 
 # ============================================
-# 4. Bootstrappa Ansible control node
+# 3. Bootstrappa Ansible control node
 # ============================================
 resource "terraform_data" "bootstrap_control" {
   depends_on = [
@@ -253,7 +220,7 @@ resource "terraform_data" "bootstrap_control" {
 }
 
 # ============================================
-# 5. Klona Kubernetes control node VM
+# 4. Klona Kubernetes control node VM
 # ============================================
 resource "proxmox_virtual_environment_vm" "k8s_control" {
   name      = "LAB-K8S-control"
@@ -290,7 +257,10 @@ resource "proxmox_virtual_environment_vm" "k8s_control" {
       }
     }
 
-    user_data_file_id = proxmox_virtual_environment_file.cloud_config.id
+    user_account {
+      username = var.ansible_user
+      keys     = [trimspace(tls_private_key.ansible_ssh.public_key_openssh)]
+    }
   }
 
   stop_on_destroy = true
@@ -301,7 +271,7 @@ resource "proxmox_virtual_environment_vm" "k8s_control" {
 }
 
 # ============================================
-# 6. Klona Kubernetes worker nodes VM
+# 5. Klona Kubernetes worker nodes VM
 # ============================================
 resource "proxmox_virtual_environment_vm" "k8s_worker" {
   for_each  = toset(var.workers)
@@ -339,7 +309,10 @@ resource "proxmox_virtual_environment_vm" "k8s_worker" {
       }
     }
 
-    user_data_file_id = proxmox_virtual_environment_file.cloud_config.id
+    user_account {
+      username = var.ansible_user
+      keys     = [trimspace(tls_private_key.ansible_ssh.public_key_openssh)]
+    }
   }
 
   stop_on_destroy = true
@@ -350,7 +323,7 @@ resource "proxmox_virtual_environment_vm" "k8s_worker" {
 }
 
 # ============================================
-# 7. Skriv Ansible inventory
+# 6. Skriv Ansible inventory
 # ============================================
 resource "terraform_data" "write_inventory" {
   depends_on = [
@@ -367,6 +340,10 @@ resource "terraform_data" "write_inventory" {
       echo "Skriver inventory på ansible control node..."
       ssh $CONTROL_SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
         "sudo -u ansible bash -c 'printf \"[control_plane]\n${proxmox_virtual_environment_vm.k8s_control.ipv4_addresses[1][0]} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519\n\n[workers]\n${join("\\n", [for name, vm in proxmox_virtual_environment_vm.k8s_worker : "${vm.ipv4_addresses[1][0]} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519"])}\n\" > /home/ansible/inventory.ini'"
+
+      echo "Skriver group_vars på ansible control node..."
+      ssh $CONTROL_SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
+        "sudo -u ansible bash -c 'mkdir -p /home/ansible/autolab/kubernetes-lab/ansible/group_vars/all && printf \"admin_ssh_key: \\\"${trimspace(file(pathexpand(var.ssh_public_key_path)))}\\\"\n\" > /home/ansible/autolab/kubernetes-lab/ansible/group_vars/all/vars.yml'"
     EOT
   }
 }
