@@ -1,0 +1,23 @@
+---
+- name: Initialize cluster
+  command: >
+    kubeadm init
+    --pod-network-cidr=192.168.0.0/23
+    --upload-certs
+  args:
+    creates: /etc/kubernetes/admin.conf
+
+- name: Create .kube dir for root
+  file:
+    path: /root/.kube
+    state: directory
+    mode: "0700"
+
+- name: Copy kubeconfig for root
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /root/.kube/config
+    remote_src: true
+    mode: "0600"
+
+
