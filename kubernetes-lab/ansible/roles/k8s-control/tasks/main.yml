@@ -24,3 +24,11 @@
   command: kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.0/manifests/calico.yaml
   environment:
     KUBECONFIG: /root/.kube/config
+
+- name: Get join command
+  command: kubeadm token create --print-join-command
+  register: join_command_raw
+
+- name: Store join command as fact
+  set_fact:
+    join_command: "{{ join_command_raw.stdout }}"
