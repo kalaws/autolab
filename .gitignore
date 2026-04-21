@@ -42,3 +42,6 @@ terraform.rc
 
 # Hämtade certifikat och CSR:er (genereras av Ansible)
 pki/playbooks/fetched/
+
+# Local filesystem files
+.DS_Store
