@@ -58,3 +58,9 @@ variable "ssh_user" {
   description = "SSH-användare i CT:arna"
   default     = "root"
 }
+
+variable "k8s_ssh_user" {
+  type        = string
+  description = "SSH-användare i k8s-noderna"
+  default     = "ubuntu"
+}
