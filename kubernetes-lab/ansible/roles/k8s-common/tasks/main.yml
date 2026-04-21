@@ -93,8 +93,6 @@
     repo: "deb https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /"
     state: present
 
-
-
 - name: Install kubeadm, kubelet, kubectl
   apt:
     name:
@@ -117,3 +115,10 @@
   systemd:
     name: kubelet
     enabled: true
+
+handlers:
+  - name: Restart containerd
+    systemd:
+      name: containerd
+      state: restarted
+
