@@ -1,0 +1,18 @@
+---
+- name: Common k8s prerequisites
+  hosts: control_plane:workers
+  become: true
+  roles:
+    - k8s-common
+
+- name: Initialize control plane
+  hosts: control_plane
+  become: true
+  roles:
+    - k8s-control
+
+- name: Join workers
+  hosts: workers
+  become: true
+  roles:
+    - k8s-worker
