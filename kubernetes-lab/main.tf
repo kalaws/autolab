@@ -205,6 +205,16 @@ resource "terraform_data" "bootstrap_control" {
         sudo chown -R ansible:ansible /home/ansible/.ssh
       "
 
+      echo "Installerar SSH-config för admin-användaren..."
+      ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
+        sudo mkdir -p /home/admin/.ssh
+        sudo cp /home/ansible/.ssh/ansible_ed25519 /home/admin/.ssh/ansible_ed25519
+        sudo chmod 600 /home/admin/.ssh/ansible_ed25519
+        sudo bash -c 'printf \"Host 10.*\n  User admin\n  IdentityFile ~/.ssh/ansible_ed25519\n  StrictHostKeyChecking no\n\" > /home/admin/.ssh/config'
+        sudo chmod 600 /home/admin/.ssh/config
+        sudo chown -R admin:admin /home/admin/.ssh
+      "
+
       echo "Installerar Ansible på ansible control node..."
       ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
         'sudo apt-get update -qq && \
@@ -343,7 +353,7 @@ resource "terraform_data" "write_inventory" {
 
       echo "Skriver group_vars på ansible control node..."
       ssh $CONTROL_SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
-        "sudo -u ansible bash -c 'mkdir -p /home/ansible/autolab/kubernetes-lab/ansible/group_vars/all && printf \"admin_ssh_key: \\\"${trimspace(file(pathexpand(var.ssh_public_key_path)))}\\\"\n\" > /home/ansible/autolab/kubernetes-lab/ansible/group_vars/all/vars.yml'"
+        "sudo -u ansible bash -c 'mkdir -p /home/ansible/autolab/kubernetes-lab/ansible/group_vars/all && printf \"admin_ssh_key: \\\"${trimspace(file(pathexpand(var.ssh_public_key_path)))}\\\"\nansible_ssh_pubkey: \\\"${trimspace(tls_private_key.ansible_ssh.public_key_openssh)}\\\"\n\" > /home/ansible/autolab/kubernetes-lab/ansible/group_vars/all/vars.yml'"
     EOT
   }
 }

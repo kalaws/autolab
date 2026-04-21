@@ -6,11 +6,14 @@
     shell: /bin/bash
     create_home: true
 
-- name: Lägg till SSH-nyckel för admin
+- name: Lägg till SSH-nycklar för admin
   authorized_key:
     user: admin
-    key: "{{ admin_ssh_key }}"
+    key: "{{ item }}"
     state: present
+  loop:
+    - "{{ admin_ssh_key }}"
+    - "{{ ansible_ssh_pubkey }}"
 
 - name: Ge admin sudo utan lösenord
   copy:
