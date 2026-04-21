@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: flask-app
 spec:
-  replicas: 2        # Kör 2 kopior av Flask (som web1 och web2 tidigare)
+  replicas: 2
   selector:
     matchLabels:
       app: flask
@@ -15,21 +15,24 @@ spec:
       containers:
         - name: flask
           image: python:3.11-slim
-          command: ["python", "-c"]
+          command: ["/bin/sh", "-c"]
           args:
             - |
+              pip install flask --quiet &&
+              python -c "
               from flask import Flask, jsonify
               import os, socket
               app = Flask(__name__)
 
-              @app.route("/")
+              @app.route('/')
               def index():
-                return f"Hej från {socket.gethostname()}!"
+                return f'Hej från {socket.gethostname()}!'
 
-              @app.route("/health")
+              @app.route('/health')
               def health():
-                return jsonify({"status": "ok", "server": socket.gethostname()})
+                return jsonify({'status': 'ok', 'server': socket.gethostname()})
 
-              app.run(host="0.0.0.0", port=5000)
+              app.run(host='0.0.0.0', port=5000)
+              "
           ports:
             - containerPort: 5000
