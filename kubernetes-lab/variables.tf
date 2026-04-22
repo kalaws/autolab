@@ -30,6 +30,12 @@ variable "github_owner" {
   default     = "kalaws"
 }
 
+variable "github_repo" {
+  type        = string
+  description = "GitHub-repository namn"
+  default     = "autolab"
+}
+
 variable "bridge_wan" {
   type        = string
   description = "Bridge för WAN-nät"
