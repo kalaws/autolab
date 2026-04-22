@@ -102,7 +102,7 @@ source "proxmox-iso" "ubuntu-2404-q35" {
   ]
 
   # ── SSH (Packer → gäst-VM, INTE mot Proxmox-noden) ──
-  ssh_username           = "ubuntu"
+  ssh_username           = "packer"
   ssh_private_key_file   = pathexpand("~/.ssh/id_ed25519")
   ssh_timeout            = "20m"
   ssh_pty                = true

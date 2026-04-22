@@ -36,7 +36,7 @@ autoinstall:
     package_upgrade: true
     timezone: Europe/Stockholm
     users:
-      - name: ubuntu
+      - name: packer
         groups: [adm, sudo]
         lock-passwd: true
         sudo: ALL=(ALL) NOPASSWD:ALL
@@ -53,4 +53,6 @@ autoinstall:
     - curtin in-target -- apt-get -y autoclean
     - curtin in-target -- bash -c "rm -rf /tmp/* /var/tmp/*"
     - curtin in-target -- bash -c "find /var/log -type f -exec truncate -s 0 {} \\;"
-    - curtin in-target -- bash -c "rm -f /home/ubuntu/.bash_history"
+    - curtin in-target -- bash -c "rm -f /home/packer/.bash_history"
+    - curtin in-target -- bash -c "userdel -r packer || true"
+

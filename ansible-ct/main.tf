@@ -218,6 +218,18 @@ resource "terraform_data" "bootstrap_control" {
         echo "WARNING: Gateway $CONTROL_GW svarar inte på DNS — faller tillbaka på ${join(", ", var.dns_servers)}"
       fi
 
+      echo "Skapar terraform-användare på ansible control node..."
+      ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP "
+        useradd -m -s /bin/bash terraform
+        echo 'terraform ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/terraform
+        chmod 440 /etc/sudoers.d/terraform
+        mkdir -p /home/terraform/.ssh
+        cp ~/.ssh/authorized_keys /home/terraform/.ssh/authorized_keys
+        chown -R terraform:terraform /home/terraform/.ssh
+        chmod 700 /home/terraform/.ssh
+        chmod 600 /home/terraform/.ssh/authorized_keys
+      "
+
       echo "Kopierar ansible SSH-nyckel till control node..."
       scp $SSH_OPTS ${local_sensitive_file.ansible_ssh_private.filename} ${var.ct_ssh_user}@$CONTROL_IP:.ssh/ansible_ed25519
       ssh $SSH_OPTS ${var.ct_ssh_user}@$CONTROL_IP "chmod 600 ~/.ssh/ansible_ed25519"

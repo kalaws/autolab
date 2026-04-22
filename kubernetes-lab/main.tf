@@ -37,7 +37,7 @@ resource "local_sensitive_file" "deploy_private_key" {
 
 resource "github_repository_deploy_key" "autolab" {
   title      = "LAB-ANSIBLE-CT-control"
-  repository = "autolab"
+  repository = var.github_repo
   key        = tls_private_key.deploy_key.public_key_openssh
   read_only  = true
 }
@@ -140,7 +140,7 @@ locals {
 }
 
 # ============================================
-# 3. Bootstrappa control node
+# 3. Bootstrappa Ansible control node
 # ============================================
 resource "terraform_data" "bootstrap_control" {
   depends_on = [
@@ -151,44 +151,90 @@ resource "terraform_data" "bootstrap_control" {
   provisioner "local-exec" {
     command = <<-EOT
       CONTROL_IP="${local.control_ip}"
+      ROOT_SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
       SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
 
-      echo "Väntar på SSH till ansible_control ($CONTROL_IP)..."
-      until ssh $SSH_OPTS ${var.ssh_user}@$CONTROL_IP true 2>/dev/null; do sleep 5; done
+      echo "Väntar på SSH till ansible control ($CONTROL_IP)..."
+      until ssh $ROOT_SSH_OPTS root@$CONTROL_IP true 2>/dev/null; do sleep 5; done
+
+      echo "Skapar användare på ansible control node..."
+      ssh $ROOT_SSH_OPTS root@$CONTROL_IP "
+        setup_user() {
+          local user=\$1 key=\$2
+          useradd -m -s /bin/bash \$user
+          echo \"\$user ALL=(ALL) NOPASSWD:ALL\" > /etc/sudoers.d/\$user
+          chmod 440 /etc/sudoers.d/\$user
+          mkdir -p /home/\$user/.ssh
+          echo \"\$key\" > /home/\$user/.ssh/authorized_keys
+          chown -R \$user:\$user /home/\$user/.ssh
+          chmod 700 /home/\$user/.ssh
+          chmod 600 /home/\$user/.ssh/authorized_keys
+        }
+        setup_user ${var.terraform_ssh_user} '${tls_private_key.terraform_ssh.public_key_openssh}'
+        setup_user ${var.ansible_user}       '${tls_private_key.ansible_ssh.public_key_openssh}'
+        setup_user admin                      '${file(pathexpand(var.ssh_public_key_path))}'
+      "
+
+      echo "Väntar på SSH som terraform-användare..."
+      until ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP true 2>/dev/null; do sleep 5; done
 
       echo "Hämtar gateway från ansible control..."
-      CONTROL_GW=$(ssh $SSH_OPTS ${var.ssh_user}@$CONTROL_IP "ip route show default | awk '{print \$3; exit}'")
+      CONTROL_GW=$(ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "ip route show default | awk '{print \$3; exit}'")
       echo "Gateway: $CONTROL_GW"
 
       echo "Konfigurerar DNS på ansible control ($CONTROL_GW)..."
-      ssh $SSH_OPTS ${var.ssh_user}@$CONTROL_IP \
+      ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
         "{ echo 'nameserver $CONTROL_GW'; %{ for dns in var.dns_servers ~}echo 'nameserver ${dns}'; %{ endfor ~}} > /etc/resolv.conf"
-      if ! ssh $SSH_OPTS ${var.ssh_user}@$CONTROL_IP \
+      if ! ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
         "python3 -c 'import socket; socket.setdefaulttimeout(2); socket.getaddrinfo(\"packages.ubuntu.com\", 80)' 2>/dev/null"; then
         echo "WARNING: Gateway $CONTROL_GW svarar inte på DNS — faller tillbaka på ${join(", ", var.dns_servers)}"
       fi
 
-      echo "Kopierar ansible SSH-nyckel till control node..."
-      scp $SSH_OPTS ${local_sensitive_file.ansible_ssh_private.filename} ${var.ssh_user}@$CONTROL_IP:.ssh/ansible_ed25519
-      ssh $SSH_OPTS ${var.ssh_user}@$CONTROL_IP "chmod 600 ~/.ssh/ansible_ed25519"
+      echo "Kopierar nycklar till control node..."
+      scp $SSH_OPTS ${local_sensitive_file.ansible_ssh_private.filename} ${var.terraform_ssh_user}@$CONTROL_IP:/tmp/ansible_ed25519
+      scp $SSH_OPTS ${local_sensitive_file.deploy_private_key.filename} ${var.terraform_ssh_user}@$CONTROL_IP:/tmp/deploy_ed25519
 
-      echo "Kopierar deploy key till ansible control..."
-      scp $SSH_OPTS ${local_sensitive_file.deploy_private_key.filename} ${var.ssh_user}@$CONTROL_IP:.ssh/deploy_ed25519
+      echo "Installerar nycklar och SSH-config för ansible-användaren..."
+      ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
+        sudo mkdir -p /home/ansible/.ssh
+        sudo mv /tmp/ansible_ed25519 /home/ansible/.ssh/ansible_ed25519
+        sudo mv /tmp/deploy_ed25519 /home/ansible/.ssh/deploy_ed25519
+        sudo chmod 600 /home/ansible/.ssh/ansible_ed25519 /home/ansible/.ssh/deploy_ed25519
+        sudo bash -c 'printf \"Host 10.*\n  User ansible\n  IdentityFile ~/.ssh/ansible_ed25519\n  StrictHostKeyChecking no\n\nHost github.com\n  IdentityFile ~/.ssh/deploy_ed25519\n  StrictHostKeyChecking no\n\" > /home/ansible/.ssh/config'
+        sudo chmod 600 /home/ansible/.ssh/config
+        sudo chown -R ansible:ansible /home/ansible/.ssh
+      "
 
-      echo "Skriver SSH-config på ansible control node..."
-      ssh $SSH_OPTS ${var.ssh_user}@$CONTROL_IP \
-        "printf 'Host 10.*\n  User ${var.ssh_user}\n  IdentityFile ~/.ssh/ansible_ed25519\n  StrictHostKeyChecking no\n\nHost github.com\n  IdentityFile ~/.ssh/deploy_ed25519\n  StrictHostKeyChecking no\n' > ~/.ssh/config && chmod 600 ~/.ssh/config"
+      echo "Installerar SSH-config för admin-användaren..."
+      ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
+        sudo mkdir -p /home/admin/.ssh
+        sudo cp /home/ansible/.ssh/ansible_ed25519 /home/admin/.ssh/ansible_ed25519
+        sudo cp /home/ansible/.ssh/deploy_ed25519 /home/admin/.ssh/deploy_ed25519
+        sudo chmod 600 /home/admin/.ssh/ansible_ed25519 /home/admin/.ssh/deploy_ed25519
+        sudo bash -c 'printf \"Host 10.*\n  User admin\n  IdentityFile ~/.ssh/ansible_ed25519\n  StrictHostKeyChecking no\n\nHost github.com\n  IdentityFile ~/.ssh/deploy_ed25519\n  StrictHostKeyChecking no\n\" > /home/admin/.ssh/config'
+        sudo chmod 600 /home/admin/.ssh/config
+        sudo chown -R admin:admin /home/admin/.ssh
+      "
 
       echo "Installerar Ansible på ansible control node..."
-      ssh $SSH_OPTS ${var.ssh_user}@$CONTROL_IP \
-        'apt-get update -qq && \
-         DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
-         DEBIAN_FRONTEND=noninteractive apt-get install -y ansible git && \
+      ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
+        'sudo apt-get update -qq && \
+         sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
+         sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ansible git && \
          ansible --version'
 
-      echo "Klonar repot på ansible control node..."
-      ssh $SSH_OPTS ${var.ssh_user}@$CONTROL_IP \
-        "git clone git@github.com:${var.github_owner}/autolab.git ~/autolab"
+      echo "Klonar repot till /opt/${var.github_repo}..."
+      ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
+        set -e
+        sudo mkdir /opt/${var.github_repo}
+        sudo chown ansible:ansible /opt/${var.github_repo}
+        sudo -u ansible git clone git@github.com:${var.github_owner}/${var.github_repo}.git /opt/${var.github_repo}
+        sudo find /opt/${var.github_repo} -type d -exec chmod g+rwxs {} +
+        sudo find /opt/${var.github_repo} -type f -exec chmod g+rw {} +
+        sudo usermod -aG ansible admin
+        sudo git config --system --add safe.directory /opt/${var.github_repo}
+        sudo -u ansible git -C /opt/${var.github_repo} config core.sharedRepository group
+      "
     EOT
   }
 }
@@ -232,7 +278,8 @@ resource "proxmox_virtual_environment_vm" "k8s_control" {
     }
 
     user_account {
-      keys = [trimspace(tls_private_key.ansible_ssh.public_key_openssh)]
+      username = var.ansible_user
+      keys     = [trimspace(tls_private_key.ansible_ssh.public_key_openssh)]
     }
   }
 
@@ -281,8 +328,10 @@ resource "proxmox_virtual_environment_vm" "k8s_worker" {
         address = "dhcp"
       }
     }
+
     user_account {
-      keys = [trimspace(tls_private_key.ansible_ssh.public_key_openssh)]
+      username = var.ansible_user
+      keys     = [trimspace(tls_private_key.ansible_ssh.public_key_openssh)]
     }
   }
 
@@ -294,13 +343,54 @@ resource "proxmox_virtual_environment_vm" "k8s_worker" {
 }
 
 # ============================================
-# 6. Skriv Ansible inventory
+# 6. Skapa admin-användare på k8s-noder
+# ============================================
+resource "terraform_data" "create_admin_k8s" {
+  depends_on = [
+    proxmox_virtual_environment_vm.k8s_control,
+    proxmox_virtual_environment_vm.k8s_worker,
+  ]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.ansible_ssh_private.filename}"
+      OPERATOR_KEY="${trimspace(file(pathexpand(var.ssh_public_key_path)))}"
+      ANSIBLE_KEY="${trimspace(tls_private_key.ansible_ssh.public_key_openssh)}"
+
+      create_admin() {
+        local ip=$1
+        echo "Väntar på SSH till $ip..."
+        until ssh $SSH_OPTS ${var.ansible_user}@$ip true 2>/dev/null; do sleep 5; done
+        echo "Skapar admin-användare på $ip..."
+        ssh $SSH_OPTS ${var.ansible_user}@$ip "
+          sudo useradd -m -s /bin/bash admin 2>/dev/null || true
+          printf '%s\n' 'admin ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/admin > /dev/null
+          sudo chmod 440 /etc/sudoers.d/admin
+          sudo mkdir -p /home/admin/.ssh
+          printf '%s\n%s\n' '$OPERATOR_KEY' '$ANSIBLE_KEY' | sudo tee /home/admin/.ssh/authorized_keys > /dev/null
+          sudo chmod 700 /home/admin/.ssh
+          sudo chmod 600 /home/admin/.ssh/authorized_keys
+          sudo chown -R admin:admin /home/admin/.ssh
+        "
+      }
+
+      create_admin "${proxmox_virtual_environment_vm.k8s_control.ipv4_addresses[1][0]}"
+      %{~ for name, vm in proxmox_virtual_environment_vm.k8s_worker }
+      create_admin "${vm.ipv4_addresses[1][0]}"
+      %{~ endfor }
+    EOT
+  }
+}
+
+# ============================================
+# 7. Skriv Ansible inventory
 # ============================================
 resource "terraform_data" "write_inventory" {
   depends_on = [
     proxmox_virtual_environment_vm.k8s_control,
     proxmox_virtual_environment_vm.k8s_worker,
     terraform_data.bootstrap_control,
+    terraform_data.create_admin_k8s,
   ]
 
   provisioner "local-exec" {
@@ -309,8 +399,9 @@ resource "terraform_data" "write_inventory" {
       CONTROL_SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
 
       echo "Skriver inventory på ansible control node..."
-      ssh $CONTROL_SSH_OPTS ${var.ssh_user}@$CONTROL_IP \
-        "printf '[control_plane]\n${proxmox_virtual_environment_vm.k8s_control.ipv4_addresses[1][0]} ansible_user=${var.k8s_ssh_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519\n\n[workers]\n${join("\\n", [for name, vm in proxmox_virtual_environment_vm.k8s_worker : "${vm.ipv4_addresses[1][0]} ansible_user=${var.k8s_ssh_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519"])}\n' > ~/inventory.ini"
+      ssh $CONTROL_SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
+        "sudo -u ansible bash -c 'mkdir -p /opt/${var.github_repo}/kubernetes-lab/ansible && printf \"[control_plane]\n${proxmox_virtual_environment_vm.k8s_control.ipv4_addresses[1][0]} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519\n\n[workers]\n${join("\\n", [for name, vm in proxmox_virtual_environment_vm.k8s_worker : "${vm.ipv4_addresses[1][0]} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519"])}\n\" > /opt/${var.github_repo}/kubernetes-lab/ansible/inventory.ini'"
+
     EOT
   }
 }

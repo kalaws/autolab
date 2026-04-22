@@ -43,5 +43,8 @@ terraform.rc
 # Hämtade certifikat och CSR:er (genereras av Ansible)
 pki/playbooks/fetched/
 
+# Ansible inventory (genereras av Terraform)
+inventory.ini
+
 # Local filesystem files
 .DS_Store
