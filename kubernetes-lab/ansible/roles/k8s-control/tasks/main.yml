@@ -36,3 +36,20 @@
 - name: Store join command as fact
   set_fact:
     join_command: "{{ join_command_raw.stdout }}"
+
+- name: Create .kube dir for admin
+  file:
+    path: /home/admin/.kube
+    state: directory
+    owner: admin
+    group: admin
+    mode: "0700"
+
+- name: Copy kubeconfig for admin
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /home/admin/.kube/config
+    remote_src: true
+    owner: admin
+    group: admin
+    mode: "0600"
