@@ -229,9 +229,11 @@ resource "terraform_data" "bootstrap_control" {
         sudo mkdir /opt/autolab
         sudo chown ansible:ansible /opt/autolab
         sudo -u ansible git clone git@github.com:${var.github_owner}/autolab.git /opt/autolab
-        sudo chmod -R g+rX /opt/autolab
+        sudo find /opt/autolab -type d -exec chmod g+rwxs {} +
+        sudo find /opt/autolab -type f -exec chmod g+rw {} +
         sudo usermod -aG ansible admin
         sudo git config --system --add safe.directory /opt/autolab
+        sudo -u ansible git -C /opt/autolab config core.sharedRepository group
       "
     EOT
   }
