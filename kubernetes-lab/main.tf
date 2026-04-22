@@ -226,8 +226,9 @@ resource "terraform_data" "bootstrap_control" {
       echo "Klonar repot till /opt/autolab..."
       ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
         set -e
+        sudo mkdir /opt/autolab
+        sudo chown ansible:ansible /opt/autolab
         sudo -u ansible git clone git@github.com:${var.github_owner}/autolab.git /opt/autolab
-        sudo chown -R ansible:ansible /opt/autolab
         sudo chmod -R g+rX /opt/autolab
         sudo usermod -aG ansible admin
       "
