@@ -275,7 +275,10 @@ resource "proxmox_virtual_environment_vm" "k8s_control" {
       }
     }
 
-    user_data_file_id = "local:snippets/cloud-config.yaml"
+    user_account {
+      username = var.ansible_user
+      keys     = [trimspace(tls_private_key.ansible_ssh.public_key_openssh)]
+    }
   }
 
   stop_on_destroy = true
@@ -324,7 +327,10 @@ resource "proxmox_virtual_environment_vm" "k8s_worker" {
       }
     }
 
-    user_data_file_id = "local:snippets/cloud-config.yaml"
+    user_account {
+      username = var.ansible_user
+      keys     = [trimspace(tls_private_key.ansible_ssh.public_key_openssh)]
+    }
   }
 
   stop_on_destroy = true
@@ -335,13 +341,54 @@ resource "proxmox_virtual_environment_vm" "k8s_worker" {
 }
 
 # ============================================
-# 6. Skriv Ansible inventory
+# 6. Skapa admin-användare på k8s-noder
+# ============================================
+resource "terraform_data" "create_admin_k8s" {
+  depends_on = [
+    proxmox_virtual_environment_vm.k8s_control,
+    proxmox_virtual_environment_vm.k8s_worker,
+  ]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.ansible_ssh_private.filename}"
+      OPERATOR_KEY="${trimspace(file(pathexpand(var.ssh_public_key_path)))}"
+      ANSIBLE_KEY="${trimspace(tls_private_key.ansible_ssh.public_key_openssh)}"
+
+      create_admin() {
+        local ip=$1
+        echo "Väntar på SSH till $ip..."
+        until ssh $SSH_OPTS ${var.ansible_user}@$ip true 2>/dev/null; do sleep 5; done
+        echo "Skapar admin-användare på $ip..."
+        ssh $SSH_OPTS ${var.ansible_user}@$ip "
+          sudo useradd -m -s /bin/bash admin 2>/dev/null || true
+          printf '%s\n' 'admin ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/admin > /dev/null
+          sudo chmod 440 /etc/sudoers.d/admin
+          sudo mkdir -p /home/admin/.ssh
+          printf '%s\n%s\n' '$OPERATOR_KEY' '$ANSIBLE_KEY' | sudo tee /home/admin/.ssh/authorized_keys > /dev/null
+          sudo chmod 700 /home/admin/.ssh
+          sudo chmod 600 /home/admin/.ssh/authorized_keys
+          sudo chown -R admin:admin /home/admin/.ssh
+        "
+      }
+
+      create_admin "${proxmox_virtual_environment_vm.k8s_control.ipv4_addresses[1][0]}"
+      %{~ for name, vm in proxmox_virtual_environment_vm.k8s_worker }
+      create_admin "${vm.ipv4_addresses[1][0]}"
+      %{~ endfor }
+    EOT
+  }
+}
+
+# ============================================
+# 7. Skriv Ansible inventory
 # ============================================
 resource "terraform_data" "write_inventory" {
   depends_on = [
     proxmox_virtual_environment_vm.k8s_control,
     proxmox_virtual_environment_vm.k8s_worker,
     terraform_data.bootstrap_control,
+    terraform_data.create_admin_k8s,
   ]
 
   provisioner "local-exec" {
