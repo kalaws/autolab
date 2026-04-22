@@ -267,10 +267,7 @@ resource "proxmox_virtual_environment_vm" "k8s_control" {
       }
     }
 
-    user_account {
-      username = var.ansible_user
-      keys     = [trimspace(tls_private_key.ansible_ssh.public_key_openssh)]
-    }
+    user_data_file_id = "local:snippets/cloud-config.yaml"
   }
 
   stop_on_destroy = true
@@ -319,10 +316,7 @@ resource "proxmox_virtual_environment_vm" "k8s_worker" {
       }
     }
 
-    user_account {
-      username = var.ansible_user
-      keys     = [trimspace(tls_private_key.ansible_ssh.public_key_openssh)]
-    }
+    user_data_file_id = "local:snippets/cloud-config.yaml"
   }
 
   stop_on_destroy = true
@@ -351,9 +345,6 @@ resource "terraform_data" "write_inventory" {
       ssh $CONTROL_SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
         "sudo -u ansible bash -c 'printf \"[control_plane]\n${proxmox_virtual_environment_vm.k8s_control.ipv4_addresses[1][0]} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519\n\n[workers]\n${join("\\n", [for name, vm in proxmox_virtual_environment_vm.k8s_worker : "${vm.ipv4_addresses[1][0]} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519"])}\n\" > /home/ansible/inventory.ini'"
 
-      echo "Skriver group_vars på ansible control node..."
-      ssh $CONTROL_SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
-        "sudo -u ansible bash -c 'mkdir -p /home/ansible/autolab/kubernetes-lab/ansible/group_vars/all && printf \"admin_ssh_key: \\\"${trimspace(file(pathexpand(var.ssh_public_key_path)))}\\\"\nansible_ssh_pubkey: \\\"${trimspace(tls_private_key.ansible_ssh.public_key_openssh)}\\\"\n\" > /home/ansible/autolab/kubernetes-lab/ansible/group_vars/all/vars.yml'"
     EOT
   }
 }

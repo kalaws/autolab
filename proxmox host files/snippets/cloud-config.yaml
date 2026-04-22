@@ -1,17 +1,22 @@
 #cloud-config
 # Put in Proxmox host /var/lib/vz/snippets/cloud-config.yaml
 
-
-hostname: set-by-clone
 users:
-  - name: ubuntu
-    sudo: ALL=(ALL) NOPASSWD:ALL
+  - name: ansible
+    groups: [sudo]
     shell: /bin/bash
-    lock_passwd: true # Deny password authentication
+    lock_passwd: true
+    sudo: ALL=(ALL) NOPASSWD:ALL
     ssh_authorized_keys:
       - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFkJG0AoEd8MxvxkIA1+7k181xXwCHbdr/jjSm1ofc6E control-node@proxmox
-package_update: true
-packages:
-  - qemu-guest-agent
+  - name: admin
+    groups: [sudo]
+    shell: /bin/bash
+    lock_passwd: true
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFkJG0AoEd8MxvxkIA1+7k181xXwCHbdr/jjSm1ofc6E control-node@proxmox
+
 runcmd:
   - systemctl enable --now qemu-guest-agent
+  - userdel -r packer || true
