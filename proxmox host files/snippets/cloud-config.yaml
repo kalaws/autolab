@@ -19,4 +19,3 @@ users:
 
 runcmd:
   - systemctl enable --now qemu-guest-agent
-  - userdel -r packer || true
