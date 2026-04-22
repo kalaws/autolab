@@ -209,8 +209,9 @@ resource "terraform_data" "bootstrap_control" {
       ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
         sudo mkdir -p /home/admin/.ssh
         sudo cp /home/ansible/.ssh/ansible_ed25519 /home/admin/.ssh/ansible_ed25519
-        sudo chmod 600 /home/admin/.ssh/ansible_ed25519
-        sudo bash -c 'printf \"Host 10.*\n  User admin\n  IdentityFile ~/.ssh/ansible_ed25519\n  StrictHostKeyChecking no\n\" > /home/admin/.ssh/config'
+        sudo cp /home/ansible/.ssh/deploy_ed25519 /home/admin/.ssh/deploy_ed25519
+        sudo chmod 600 /home/admin/.ssh/ansible_ed25519 /home/admin/.ssh/deploy_ed25519
+        sudo bash -c 'printf \"Host 10.*\n  User admin\n  IdentityFile ~/.ssh/ansible_ed25519\n  StrictHostKeyChecking no\n\nHost github.com\n  IdentityFile ~/.ssh/deploy_ed25519\n  StrictHostKeyChecking no\n\" > /home/admin/.ssh/config'
         sudo chmod 600 /home/admin/.ssh/config
         sudo chown -R admin:admin /home/admin/.ssh
       "
@@ -222,9 +223,13 @@ resource "terraform_data" "bootstrap_control" {
          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ansible git && \
          ansible --version'
 
-      echo "Klonar repot som ansible-användaren..."
-      ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
-        "sudo -u ansible git clone git@github.com:${var.github_owner}/autolab.git /home/ansible/autolab"
+      echo "Klonar repot till /opt/autolab..."
+      ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
+        sudo -u ansible git clone git@github.com:${var.github_owner}/autolab.git /opt/autolab
+        sudo chown -R ansible:ansible /opt/autolab
+        sudo chmod -R g+rX /opt/autolab
+        sudo usermod -aG ansible admin
+      "
     EOT
   }
 }
@@ -343,7 +348,7 @@ resource "terraform_data" "write_inventory" {
 
       echo "Skriver inventory på ansible control node..."
       ssh $CONTROL_SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
-        "sudo -u ansible bash -c 'printf \"[control_plane]\n${proxmox_virtual_environment_vm.k8s_control.ipv4_addresses[1][0]} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519\n\n[workers]\n${join("\\n", [for name, vm in proxmox_virtual_environment_vm.k8s_worker : "${vm.ipv4_addresses[1][0]} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519"])}\n\" > /home/ansible/inventory.ini'"
+        "sudo -u ansible bash -c 'printf \"[control_plane]\n${proxmox_virtual_environment_vm.k8s_control.ipv4_addresses[1][0]} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519\n\n[workers]\n${join("\\n", [for name, vm in proxmox_virtual_environment_vm.k8s_worker : "${vm.ipv4_addresses[1][0]} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519"])}\n\" > /opt/autolab/kubernetes-lab/ansible/inventory.ini'"
 
     EOT
   }
