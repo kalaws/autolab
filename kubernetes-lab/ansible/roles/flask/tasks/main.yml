@@ -1,0 +1,28 @@
+---
+# STEG 1: Kopiera deployment.yaml till control-noden
+- name: Kopiera deployment.yaml
+  copy:
+    src: files/deployment.yaml
+    dest: /home/ansible/deployment.yaml
+    owner: ansible
+    mode: "0644"
+
+# STEG 2: Kopiera service.yaml till control-noden
+- name: Kopiera service.yaml
+  copy:
+    src: files/service.yaml
+    dest: /home/ansible/service.yaml
+    owner: ansible
+    mode: "0644"
+
+# STEG 3: Applicera deployment
+- name: Applicera Flask deployment
+  command: kubectl apply -f /home/ansible/deployment.yaml
+  environment:
+    KUBECONFIG: /home/ansible/.kube/config
+
+# STEG 4: Applicera service
+- name: Applicera Flask service
+  command: kubectl apply -f /home/ansible/service.yaml
+  environment:
+    KUBECONFIG: /home/ansible/.kube/config
