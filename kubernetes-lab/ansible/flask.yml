@@ -5,3 +5,51 @@
 
   roles:
     - k8s-control
+
+- name: Driftsätt Flask i Kubernetes
+  hosts: control_plane
+  become: yes
+  roles:
+    - flask
+
+- name: Verifiera Flask i Kubernetes
+  hosts: control_plane
+  become: yes
+
+  tasks:
+    - name: Hämta Flask pods
+      command: kubectl get pods -l app=flask
+      environment:
+        KUBECONFIG: /home/ansible/.kube/config
+      register: pods_output
+
+    - name: Visa pod-status
+      debug:
+        msg: "{{ pods_output.stdout }}"
+
+    - name: Kontrollera att pods är Running
+      assert:
+        that:
+          - "'Running' in pods_output.stdout"
+        fail_msg: "Pods är inte Running!"
+        success_msg: "Pods är Running! ✓"
+
+    - name: Hämta Flask service
+      command: kubectl get service flask-service
+      environment:
+        KUBECONFIG: /home/ansible/.kube/config
+      register: service_output
+
+    - name: Visa service-status
+      debug:
+        msg: "{{ service_output.stdout }}"
+
+    - name: Testa Flask HTTP-svar
+      uri:
+        url: "http://10.10.1.222:30080"
+        status_code: 200
+      register: http_response
+
+    - name: Visa HTTP-svar
+      debug:
+        msg: "Flask svarar med statuskod: {{ http_response.status }}"
