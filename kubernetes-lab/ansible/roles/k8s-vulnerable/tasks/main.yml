@@ -106,6 +106,28 @@
     regexp: 'anonymous:\n\s+enabled: false'
     replace: "anonymous:\n    enabled: true"
 
+- name: Create anonymous kubelet access
+  copy:
+    dest: /tmp/anonymous-access.yaml
+    content: |
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: anonymous-kubelet-access
+      subjects:
+      - kind: User
+        name: system:anonymous
+        apiGroup: rbac.authorization.k8s.io
+      roleRef:
+        kind: ClusterRole
+        name: cluster-admin
+        apiGroup: rbac.authorization.k8s.io
+
+- name: Apply anonymous access
+  command: kubectl apply -f /tmp/anonymous-access.yaml
+  environment:
+    KUBECONFIG: /home/ansible/.kube/config
+
 - name: Restart kubelet
   systemd:
     name: kubelet
