@@ -2,20 +2,12 @@
 - name: Driftsätt Flask i Kubernetes
   hosts: control_plane
   become: yes
-
-  roles:
-    - k8s-control
-
-- name: Driftsätt Flask i Kubernetes
-  hosts: control_plane
-  become: yes
   roles:
     - flask
 
 - name: Verifiera Flask i Kubernetes
   hosts: control_plane
   become: yes
-
   tasks:
     - name: Hämta Flask pods
       command: kubectl get pods -l app=flask
@@ -46,7 +38,7 @@
 
     - name: Testa Flask HTTP-svar
       uri:
-        url: "http://10.10.1.222:30080"
+        url: "http://10.10.1.223:30080"
         status_code: 200
       register: http_response
 
