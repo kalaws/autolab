@@ -9,3 +9,21 @@ terraform {
 
 
 provider "proxmox" {}
+
+resource "proxmox_vitrual_environment_vm" "learning_vm" {
+    name = "terraform-learning-vm"
+    node_name = "pve"
+    vm_id = 300
+
+    clone {
+        vm_id = 116
+    }
+
+    cpu {
+        cores = 1
+    }
+
+    memory {
+        dedicated = 512
+    }
+}
