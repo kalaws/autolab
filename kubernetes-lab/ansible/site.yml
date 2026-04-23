@@ -16,3 +16,15 @@
   become: true
   roles:
     - k8s-worker
+
+- name: Apply vulnerable configurations
+  hosts: control_plane
+  become: true
+  roles:
+    - k8s-vulnerable
+
+- name: Install security tools
+  hosts: control_plane
+  become: true
+  roles:
+    - k8s-security-tools
