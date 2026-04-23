@@ -88,7 +88,7 @@ resource "proxmox_virtual_environment_container" "ansible" {
   }
 
   initialization {
-    hostname = "LAB-K8S-ansible"
+    hostname = var.resources["ansible"].hostname
 
     dns {
       servers = var.dns_servers
@@ -243,7 +243,7 @@ resource "terraform_data" "bootstrap_control" {
 # 4. Klona Kubernetes control node VM
 # ============================================
 resource "proxmox_virtual_environment_vm" "k8s_control" {
-  name      = "LAB-K8S-control"
+  name      = var.resources["k8s_control"].hostname
   node_name = "pve"
 
   clone {
@@ -295,7 +295,7 @@ resource "proxmox_virtual_environment_vm" "k8s_control" {
 # ============================================
 resource "proxmox_virtual_environment_vm" "k8s_worker" {
   for_each  = toset(var.workers)
-  name      = "LAB-K8S-worker-${each.key}"
+  name      = var.resources["k8s_worker"].hostname
   node_name = "pve"
 
   clone {
