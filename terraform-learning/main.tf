@@ -10,7 +10,7 @@ terraform {
 
 provider "proxmox" {}
 
-resource "proxmox_vitrual_environment_vm" "learning_vm" {
+resource "proxmox_virtual_environment_vm" "learning_vm" {
     name = "terraform-learning-vm"
     node_name = "pve"
     vm_id = 300
