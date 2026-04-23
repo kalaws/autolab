@@ -295,7 +295,7 @@ resource "proxmox_virtual_environment_vm" "k8s_control" {
 # ============================================
 resource "proxmox_virtual_environment_vm" "k8s_worker" {
   for_each  = toset(var.workers)
-  name      = var.resources["k8s_worker"].hostname
+  name      = "${var.resources["k8s_worker"].hostname}-${each.key}"
   node_name = "pve"
 
   clone {
