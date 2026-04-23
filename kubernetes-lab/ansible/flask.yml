@@ -4,4 +4,4 @@
   become: yes
 
   roles:
-    - flask
+    - k8s-control
