@@ -55,3 +55,44 @@
   command: kubectl apply -f /tmp/vulnerable-sa.yaml
   environment:
     KUBECONFIG: /home/ansible/.kube/config
+
+# ============================================
+# 3. Privilegierad pod med host-åtkomst
+# ============================================
+- name: Create privileged pod manifest
+  copy:
+    dest: /tmp/vulnerable-pod.yaml
+    content: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: vulnerable-pod
+        namespace: default
+      spec:
+        serviceAccountName: vulnerable-sa
+        hostPID: true
+        hostNetwork: true
+        containers:
+        - name: vulnerable
+          image: ubuntu:22.04
+          command: ["/bin/sleep", "infinity"]
+          securityContext:
+            privileged: true
+            runAsUser: 0
+          env:
+          - name: DB_PASSWORD
+            value: "SuperHemligt123!"
+          - name: API_KEY
+            value: "sk-prod-abc123xyz789"
+          volumeMounts:
+          - name: host-root
+            mountPath: /host
+        volumes:
+        - name: host-root
+          hostPath:
+            path: /
+
+- name: Apply vulnerable pod
+  command: kubectl apply -f /tmp/vulnerable-pod.yaml
+  environment:
+    KUBECONFIG: /home/ansible/.kube/config
