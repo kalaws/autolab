@@ -8,4 +8,9 @@ terraform {
 }
 
 
-provider "proxmox" {}
+provider "proxmox" {
+    endpoint = "https://100.123.44.38:8006"
+    username = "admin"
+    password = "admin"
+    insecure = true
+}
