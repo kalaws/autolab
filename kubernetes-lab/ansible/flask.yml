@@ -36,9 +36,15 @@
       debug:
         msg: "{{ service_output.stdout }}"
 
+    - name: Hämta worker-nodens IP
+      command: kubectl get nodes -l node-role.kubernetes.io/worker -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}'
+      environment:
+        KUBECONFIG: /home/ansible/.kube/config
+      register: worker_ip
+
     - name: Testa Flask HTTP-svar
       uri:
-        url: "http://10.10.1.223:30080"
+        url: "http://{{ worker_ip.stdout }}:30080"
         status_code: 200
       register: http_response
 
