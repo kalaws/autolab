@@ -25,3 +25,33 @@
   environment:
     KUBECONFIG: /home/ansible/.kube/config
 
+# ============================================
+# 2. ClusterAdmin service account (för bred behörighet)
+# ============================================
+- name: Create vulnerable service account manifest
+  copy:
+    dest: /tmp/vulnerable-sa.yaml
+    content: |
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: vulnerable-sa
+        namespace: default
+      ---
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: vulnerable-sa-admin
+      subjects:
+      - kind: ServiceAccount
+        name: vulnerable-sa
+        namespace: default
+      roleRef:
+        kind: ClusterRole
+        name: cluster-admin
+        apiGroup: rbac.authorization.k8s.io
+
+- name: Apply vulnerable service account
+  command: kubectl apply -f /tmp/vulnerable-sa.yaml
+  environment:
+    KUBECONFIG: /home/ansible/.kube/config
