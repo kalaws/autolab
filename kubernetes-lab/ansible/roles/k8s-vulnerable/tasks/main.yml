@@ -96,3 +96,17 @@
   command: kubectl apply -f /tmp/vulnerable-pod.yaml
   environment:
     KUBECONFIG: /home/ansible/.kube/config
+
+# ============================================
+# 4. Kubelet anonymous auth (CIS-avvikelse)
+# ============================================
+- name: Enable kubelet anonymous auth
+  replace:
+    path: /var/lib/kubelet/config.yaml
+    regexp: 'anonymous:\n\s+enabled: false'
+    replace: "anonymous:\n    enabled: true"
+
+- name: Restart kubelet
+  systemd:
+    name: kubelet
+    state: restarted
