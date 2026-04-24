@@ -1,32 +1,5 @@
----
 # ============================================
-# 1. Kubernetes Dashboard utan autentisering
-# ============================================
-- name: Install Kubernetes Dashboard
-  command: kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
-  environment:
-    KUBECONFIG: /home/ansible/.kube/config
-
-- name: Patch Dashboard to skip login
-  command: >
-    kubectl patch deployment kubernetes-dashboard
-    -n kubernetes-dashboard
-    --type=json
-    -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--enable-skip-login"}]'
-  environment:
-    KUBECONFIG: /home/ansible/.kube/config
-
-- name: Expose Dashboard via NodePort
-  command: >
-    kubectl patch svc kubernetes-dashboard
-    -n kubernetes-dashboard
-    --type=json
-    -p='[{"op":"replace","path":"/spec/type","value":"NodePort"},{"op":"add","path":"/spec/ports/0/nodePort","value":30443}]'
-  environment:
-    KUBECONFIG: /home/ansible/.kube/config
-
-# ============================================
-# 2. ClusterAdmin service account (för bred behörighet)
+# 1. ClusterAdmin service account (för bred behörighet)
 # ============================================
 - name: Create vulnerable service account manifest
   copy:
@@ -57,43 +30,55 @@
     KUBECONFIG: /home/ansible/.kube/config
 
 # ============================================
-# 3. Privilegierad pod med host-åtkomst
+# 2. Webbapp-pod med cluster-admin service account
+#    och secrets i klartext
 # ============================================
-- name: Create privileged pod manifest
+- name: Create webapp pod manifest
   copy:
-    dest: /tmp/vulnerable-pod.yaml
+    dest: /tmp/webapp-pod.yaml
     content: |
       apiVersion: v1
       kind: Pod
       metadata:
-        name: vulnerable-pod
+        name: webapp
         namespace: default
+        labels:
+          app: webapp
       spec:
         serviceAccountName: vulnerable-sa
-        hostPID: true
-        hostNetwork: true
         containers:
-        - name: vulnerable
-          image: ubuntu:22.04
-          command: ["/bin/sleep", "infinity"]
-          securityContext:
-            privileged: true
-            runAsUser: 0
+        - name: webapp
+          image: python:3.11-slim
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              pip install flask --quiet &&
+              python -c "
+              from flask import Flask, request
+              import os, socket
+              app = Flask(__name__)
+
+              @app.route('/')
+              def index():
+                return f'Webapp running on {socket.gethostname()}'
+
+              @app.route('/debug')
+              def debug():
+                cmd = request.args.get('cmd', 'id')
+                return os.popen(cmd).read()
+
+              app.run(host='0.0.0.0', port=5000)
+              "
+          ports:
+          - containerPort: 5000
           env:
           - name: DB_PASSWORD
             value: "SuperHemligt123!"
           - name: API_KEY
             value: "sk-prod-abc123xyz789"
-          volumeMounts:
-          - name: host-root
-            mountPath: /host
-        volumes:
-        - name: host-root
-          hostPath:
-            path: /
 
-- name: Apply vulnerable pod
-  command: kubectl apply -f /tmp/vulnerable-pod.yaml
+- name: Apply webapp pod
+  command: kubectl apply -f /tmp/webapp-pod.yaml
   environment:
     KUBECONFIG: /home/ansible/.kube/config
 
