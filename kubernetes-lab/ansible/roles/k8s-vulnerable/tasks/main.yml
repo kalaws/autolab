@@ -83,37 +83,27 @@
     KUBECONFIG: /home/ansible/.kube/config
 
 # ============================================
-# 4. Kubelet anonymous auth (CIS-avvikelse)
+# 4. Exponera webapp via NodePort
 # ============================================
-- name: Enable kubelet anonymous auth
-  replace:
-    path: /var/lib/kubelet/config.yaml
-    regexp: 'anonymous:\n\s+enabled: false'
-    replace: "anonymous:\n    enabled: true"
-
-- name: Create anonymous kubelet access
+- name: Create webapp service manifest
   copy:
-    dest: /tmp/anonymous-access.yaml
+    dest: /tmp/webapp-svc.yaml
     content: |
-      apiVersion: rbac.authorization.k8s.io/v1
-      kind: ClusterRoleBinding
+      apiVersion: v1
+      kind: Service
       metadata:
-        name: anonymous-kubelet-access
-      subjects:
-      - kind: User
-        name: system:anonymous
-        apiGroup: rbac.authorization.k8s.io
-      roleRef:
-        kind: ClusterRole
-        name: cluster-admin
-        apiGroup: rbac.authorization.k8s.io
+        name: webapp-service
+        namespace: default
+      spec:
+        type: NodePort
+        selector:
+          app: webapp
+        ports:
+        - port: 5000
+          targetPort: 5000
+          nodePort: 30500
 
-- name: Apply anonymous access
-  command: kubectl apply -f /tmp/anonymous-access.yaml
+- name: Apply webapp service
+  command: kubectl apply -f /tmp/webapp-svc.yaml
   environment:
     KUBECONFIG: /home/ansible/.kube/config
-
-- name: Restart kubelet
-  systemd:
-    name: kubelet
-    state: restarted
