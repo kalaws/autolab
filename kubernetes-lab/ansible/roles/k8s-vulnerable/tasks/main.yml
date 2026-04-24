@@ -83,7 +83,7 @@
     KUBECONFIG: /home/ansible/.kube/config
 
 # ============================================
-# 4. Exponera webapp via NodePort
+# 3. Exponera webapp via NodePort
 # ============================================
 - name: Create webapp service manifest
   copy:
@@ -105,5 +105,28 @@
 
 - name: Apply webapp service
   command: kubectl apply -f /tmp/webapp-svc.yaml
+  environment:
+    KUBECONFIG: /home/ansible/.kube/config
+
+# ============================================
+# 4. Hemligheter lagrade som Kubernetes Secret
+#    men monterade som env-variabler (dålig praxis)
+# ============================================
+- name: Create insecure secret manifest
+  copy:
+    dest: /tmp/insecure-secret.yaml
+    content: |
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: db-credentials
+        namespace: default
+      type: Opaque
+      stringData:
+        password: "SuperHemligt123!"
+        api-key: "sk-prod-abc123xyz789"
+
+- name: Apply insecure secret
+  command: kubectl apply -f /tmp/insecure-secret.yaml
   environment:
     KUBECONFIG: /home/ansible/.kube/config
