@@ -17,3 +17,8 @@ variable "memory" {
     description = "RAM i MB"
     type = number
 }
+
+variable "vm_count" {
+    description = "antal vms att skapa"
+    type = number
+}

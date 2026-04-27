@@ -11,9 +11,10 @@ terraform {
 provider "proxmox" {}
 
 resource "proxmox_virtual_environment_vm" "learning_vm" {
-    name = var.vm_name
+    count = var.vm_count
+    name = "terraform-learing-vm-${count.index + 1}"
     node_name = "pve"
-    vm_id = var.vm_id
+    vm_id = 300 + count.index
 
     clone {
         vm_id = 116
