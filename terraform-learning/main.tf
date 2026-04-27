@@ -26,4 +26,8 @@ resource "proxmox_virtual_environment_vm" "learning_vm" {
     memory {
         dedicated = 512
     }
+
+    agent {
+        enabled = false
+    }
 }
