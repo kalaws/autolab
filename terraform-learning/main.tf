@@ -28,7 +28,7 @@ resource "proxmox_virtual_environment_vm" "learning_vm" {
     }
 
     agent {
-        enabled = false
+        enabled = true
     }
 
     network_device {
