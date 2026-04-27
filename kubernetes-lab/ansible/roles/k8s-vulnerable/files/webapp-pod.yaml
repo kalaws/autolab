@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: webapp
+  namespace: default
+  labels:
+    app: webapp
+spec:
+  serviceAccountName: vulnerable-sa
+  containers:
+  - name: webapp
+    image: python:3.11-slim
+    command: ["/bin/sh", "-c"]
+    args:
+      - |
+        pip install flask --quiet &&
+        python -c "
+        from flask import Flask, request
+        import os, socket
+        app = Flask(__name__)
+
+        @app.route('/')
+        def index():
+          return f'Webapp running on {socket.gethostname()}'
+
+        @app.route('/debug')
+        def debug():
+          cmd = request.args.get('cmd', 'id')
+          return os.popen(cmd).read()
+
+        app.run(host='0.0.0.0', port=5000)
+        "
+    ports:
+    - containerPort: 5000
+    env:
+    - name: DB_PASSWORD
+      value: "SuperHemligt123!"
+    - name: API_KEY
+      value: "sk-prod-abc123xyz789"

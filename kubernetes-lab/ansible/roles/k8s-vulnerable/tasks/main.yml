@@ -3,26 +3,8 @@
 # ============================================
 - name: Create vulnerable service account manifest
   copy:
+    src: vulnerable-sa.yaml
     dest: /tmp/vulnerable-sa.yaml
-    content: |
-      apiVersion: v1
-      kind: ServiceAccount
-      metadata:
-        name: vulnerable-sa
-        namespace: default
-      ---
-      apiVersion: rbac.authorization.k8s.io/v1
-      kind: ClusterRoleBinding
-      metadata:
-        name: vulnerable-sa-admin
-      subjects:
-      - kind: ServiceAccount
-        name: vulnerable-sa
-        namespace: default
-      roleRef:
-        kind: ClusterRole
-        name: cluster-admin
-        apiGroup: rbac.authorization.k8s.io
 
 - name: Apply vulnerable service account
   command: kubectl apply -f /tmp/vulnerable-sa.yaml
@@ -35,47 +17,8 @@
 # ============================================
 - name: Create webapp pod manifest
   copy:
+    src: webapp-pod.yaml
     dest: /tmp/webapp-pod.yaml
-    content: |
-      apiVersion: v1
-      kind: Pod
-      metadata:
-        name: webapp
-        namespace: default
-        labels:
-          app: webapp
-      spec:
-        serviceAccountName: vulnerable-sa
-        containers:
-        - name: webapp
-          image: python:3.11-slim
-          command: ["/bin/sh", "-c"]
-          args:
-            - |
-              pip install flask --quiet &&
-              python -c "
-              from flask import Flask, request
-              import os, socket
-              app = Flask(__name__)
-
-              @app.route('/')
-              def index():
-                return f'Webapp running on {socket.gethostname()}'
-
-              @app.route('/debug')
-              def debug():
-                cmd = request.args.get('cmd', 'id')
-                return os.popen(cmd).read()
-
-              app.run(host='0.0.0.0', port=5000)
-              "
-          ports:
-          - containerPort: 5000
-          env:
-          - name: DB_PASSWORD
-            value: "SuperHemligt123!"
-          - name: API_KEY
-            value: "sk-prod-abc123xyz789"
 
 - name: Apply webapp pod
   command: kubectl apply -f /tmp/webapp-pod.yaml
@@ -87,21 +30,8 @@
 # ============================================
 - name: Create webapp service manifest
   copy:
+    src: webapp-svc.yaml
     dest: /tmp/webapp-svc.yaml
-    content: |
-      apiVersion: v1
-      kind: Service
-      metadata:
-        name: webapp-service
-        namespace: default
-      spec:
-        type: NodePort
-        selector:
-          app: webapp
-        ports:
-        - port: 5000
-          targetPort: 5000
-          nodePort: 30500
 
 - name: Apply webapp service
   command: kubectl apply -f /tmp/webapp-svc.yaml
@@ -114,17 +44,8 @@
 # ============================================
 - name: Create insecure secret manifest
   copy:
+    src: insecure-secret.yaml
     dest: /tmp/insecure-secret.yaml
-    content: |
-      apiVersion: v1
-      kind: Secret
-      metadata:
-        name: db-credentials
-        namespace: default
-      type: Opaque
-      stringData:
-        password: "SuperHemligt123!"
-        api-key: "sk-prod-abc123xyz789"
 
 - name: Apply insecure secret
   command: kubectl apply -f /tmp/insecure-secret.yaml
