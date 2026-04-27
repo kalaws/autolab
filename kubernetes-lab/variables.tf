@@ -14,7 +14,7 @@ variable "resources" {
   description = "VM configurations for Kubernetes lab"   
   default = {     
     ansible  = { hostname = "LAB-K8Ssec-ansible", cores = 1, memory = 512, disk = 8 }
-    k8s_control  = { hostname = "LAB-K8Ssec-control-plane", cores = 2, memory = 2048,  disk = 20 }          
+    k8s_control  = { hostname = "LAB-K8Ssec-master", cores = 2, memory = 2048,  disk = 20 }          
     k8s_worker  = { hostname = "LAB-K8Ssec-worker", cores = 2, memory = 4096, disk = 40 }
   } 
   type = map(object({  
