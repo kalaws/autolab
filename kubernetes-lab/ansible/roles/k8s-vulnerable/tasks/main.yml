@@ -15,6 +15,19 @@
 # 2. Webbapp-pod med cluster-admin service account
 #    och secrets i klartext
 # ============================================
+- name: Copy webapp script
+  copy:
+    src: webapp.py
+    dest: /tmp/webapp.py
+
+- name: Create webapp ConfigMap from script
+  shell: >
+    kubectl create configmap webapp-script
+    --from-file=webapp.py=/tmp/webapp.py
+    --dry-run=client -o yaml | kubectl apply -f -
+  environment:
+    KUBECONFIG: /home/ansible/.kube/config
+
 - name: Create webapp pod manifest
   copy:
     src: webapp-pod.yaml
