@@ -9,10 +9,7 @@ spec:
   serviceAccountName: vulnerable-sa
   containers:
   - name: webapp
-    image: python:3.11-slim
-    command: ["/bin/sh", "-c"]
-    args:
-      - pip install flask --quiet && python /app/webapp.py
+    image: "{{ webapp_dockerhub_image }}"
     ports:
     - containerPort: 5000
     env:
@@ -20,10 +17,3 @@ spec:
       value: "SuperHemligt123!"
     - name: API_KEY
       value: "sk-prod-abc123xyz789"
-    volumeMounts:
-    - name: webapp-script
-      mountPath: /app
-  volumes:
-  - name: webapp-script
-    configMap:
-      name: webapp-script

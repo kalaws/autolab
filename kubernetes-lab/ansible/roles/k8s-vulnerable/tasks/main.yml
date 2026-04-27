@@ -7,24 +7,38 @@
     KUBECONFIG: /home/ansible/.kube/config
 
 # ============================================
-# 2. Webbapp-pod med cluster-admin service account
+# 2. Bygg och pusha webapp-image till Docker Hub
+# ============================================
+- name: Build webapp Docker image
+  community.docker.docker_image:
+    name: "{{ webapp_dockerhub_image }}"
+    build:
+      path: "{{ role_path }}/files"
+    source: build
+    push: false
+
+- name: Push webapp image to Docker Hub
+  community.docker.docker_image:
+    name: "{{ webapp_dockerhub_image }}"
+    source: local
+    push: true
+
+# ============================================
+# 3. Webbapp-pod med cluster-admin service account
 #    och secrets i klartext
 # ============================================
-- name: Create webapp ConfigMap from script
-  shell: >
-    kubectl create configmap webapp-script
-    --from-file=webapp.py={{ role_path }}/files/webapp.py
-    --dry-run=client -o yaml | kubectl apply -f -
-  environment:
-    KUBECONFIG: /home/ansible/.kube/config
+- name: Render webapp pod manifest
+  template:
+    src: webapp-pod.yaml.j2
+    dest: /tmp/webapp-pod.yaml
 
 - name: Apply webapp pod
-  command: kubectl apply -f {{ role_path }}/files/webapp-pod.yaml
+  command: kubectl apply -f /tmp/webapp-pod.yaml
   environment:
     KUBECONFIG: /home/ansible/.kube/config
 
 # ============================================
-# 3. Exponera webapp via NodePort
+# 4. Exponera webapp via NodePort
 # ============================================
 - name: Apply webapp service
   command: kubectl apply -f {{ role_path }}/files/webapp-svc.yaml
@@ -32,7 +46,7 @@
     KUBECONFIG: /home/ansible/.kube/config
 
 # ============================================
-# 4. Hemligheter lagrade som Kubernetes Secret
+# 5. Hemligheter lagrade som Kubernetes Secret
 #    men monterade som env-variabler (dålig praxis)
 # ============================================
 - name: Apply insecure secret
