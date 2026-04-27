@@ -1,13 +1,8 @@
 # ============================================
 # 1. ClusterAdmin service account (för bred behörighet)
 # ============================================
-- name: Create vulnerable service account manifest
-  copy:
-    src: vulnerable-sa.yaml
-    dest: /tmp/vulnerable-sa.yaml
-
 - name: Apply vulnerable service account
-  command: kubectl apply -f /tmp/vulnerable-sa.yaml
+  command: kubectl apply -f {{ role_path }}/files/vulnerable-sa.yaml
   environment:
     KUBECONFIG: /home/ansible/.kube/config
 
@@ -15,39 +10,24 @@
 # 2. Webbapp-pod med cluster-admin service account
 #    och secrets i klartext
 # ============================================
-- name: Copy webapp script
-  copy:
-    src: webapp.py
-    dest: /tmp/webapp.py
-
 - name: Create webapp ConfigMap from script
   shell: >
     kubectl create configmap webapp-script
-    --from-file=webapp.py=/tmp/webapp.py
+    --from-file=webapp.py={{ role_path }}/files/webapp.py
     --dry-run=client -o yaml | kubectl apply -f -
   environment:
     KUBECONFIG: /home/ansible/.kube/config
 
-- name: Create webapp pod manifest
-  copy:
-    src: webapp-pod.yaml
-    dest: /tmp/webapp-pod.yaml
-
 - name: Apply webapp pod
-  command: kubectl apply -f /tmp/webapp-pod.yaml
+  command: kubectl apply -f {{ role_path }}/files/webapp-pod.yaml
   environment:
     KUBECONFIG: /home/ansible/.kube/config
 
 # ============================================
 # 3. Exponera webapp via NodePort
 # ============================================
-- name: Create webapp service manifest
-  copy:
-    src: webapp-svc.yaml
-    dest: /tmp/webapp-svc.yaml
-
 - name: Apply webapp service
-  command: kubectl apply -f /tmp/webapp-svc.yaml
+  command: kubectl apply -f {{ role_path }}/files/webapp-svc.yaml
   environment:
     KUBECONFIG: /home/ansible/.kube/config
 
@@ -55,12 +35,7 @@
 # 4. Hemligheter lagrade som Kubernetes Secret
 #    men monterade som env-variabler (dålig praxis)
 # ============================================
-- name: Create insecure secret manifest
-  copy:
-    src: insecure-secret.yaml
-    dest: /tmp/insecure-secret.yaml
-
 - name: Apply insecure secret
-  command: kubectl apply -f /tmp/insecure-secret.yaml
+  command: kubectl apply -f {{ role_path }}/files/insecure-secret.yaml
   environment:
     KUBECONFIG: /home/ansible/.kube/config
