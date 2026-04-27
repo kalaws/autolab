@@ -35,4 +35,12 @@ resource "proxmox_virtual_environment_vm" "learning_vm" {
         bridge = "vmbr0"
         model = "virtio"
     }
+
+    initialization {
+        ip_config {
+            ipv4 {
+                address = "dhcp"
+            }
+        }
+    }
 }
