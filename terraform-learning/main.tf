@@ -11,24 +11,24 @@ terraform {
 provider "proxmox" {}
 
 resource "proxmox_virtual_environment_vm" "learning_vm" {
-    name = "terraform-learning-vm"
+    name = var.vm_name
     node_name = "pve"
-    vm_id = 300
+    vm_id = var.vm_id
 
     clone {
         vm_id = 116
     }
 
     cpu {
-        cores = 1
+        cores = var.cpu_cores
     }
 
     memory {
-        dedicated = 512
+        dedicated = var.memory
     }
 
     agent {
-        enabled = true
+        enabled = false
     }
 
     network_device {
