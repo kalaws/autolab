@@ -30,4 +30,9 @@ resource "proxmox_virtual_environment_vm" "learning_vm" {
     agent {
         enabled = false
     }
+
+    network_device {
+        bridge = "vmbr0"
+        model = "virtio"
+    }
 }
