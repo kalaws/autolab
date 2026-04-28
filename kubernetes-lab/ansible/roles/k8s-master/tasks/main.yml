@@ -68,7 +68,10 @@
     enabled: true
     state: started
 
-- name: Install Python kubernetes package
-  pip:
-    name: kubernetes
+- name: Install pip and Python kubernetes package
+  apt:
+    name:
+      - python3-pip
+      - python3-kubernetes
     state: present
+    update_cache: false
