@@ -1,0 +1,19 @@
+- name: Remove previous kube-bench job if exists
+  kubernetes.core.k8s:
+    api_version: batch/v1
+    kind: Job
+    name: kube-bench
+    namespace: default
+    state: absent
+    kubeconfig: /home/ansible/.kube/config
+
+- name: Copy kube-bench job manifest
+  copy:
+    src: kube-bench-job.yaml
+    dest: /tmp/kube-bench-job.yaml
+
+- name: Apply kube-bench job
+  kubernetes.core.k8s:
+    src: /tmp/kube-bench-job.yaml
+    state: present
+    kubeconfig: /home/ansible/.kube/config
