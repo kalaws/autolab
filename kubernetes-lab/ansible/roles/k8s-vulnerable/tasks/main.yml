@@ -49,12 +49,12 @@
 # 3. Webbapp-pod med cluster-admin service account
 #    och secrets i klartext
 # ============================================
-- name: Render webapp pod manifest
+- name: Render webapp deployment manifest
   template:
     src: webapp-pod.yaml.j2
     dest: /tmp/webapp-pod.yaml
 
-- name: Apply webapp pod
+- name: Apply webapp deployment
   command: kubectl apply -f /tmp/webapp-pod.yaml
   environment:
     KUBECONFIG: /home/ansible/.kube/config
