@@ -17,3 +17,36 @@
     src: /tmp/kube-bench-job.yaml
     state: present
     kubeconfig: /home/ansible/.kube/config
+
+- name: Wait for kube-bench job to complete
+  kubernetes.core.k8s_info:
+    api_version: batch/v1
+    kind: Job
+    name: kube-bench
+    namespace: default
+    kubeconfig: /home/ansible/.kube/config
+  register: job_status
+  until: >
+    (job_status.resources[0].status.succeeded | default(0)) > 0 or
+    (job_status.resources[0].status.failed    | default(0)) > 0
+  retries: 30
+  delay: 10
+
+- name: Fetch kube-bench results
+  command: >
+    kubectl logs -n default
+    -l job-name=kube-bench
+    --tail=-1
+  environment:
+    KUBECONFIG: /home/ansible/.kube/config
+  register: kube_bench_results
+  changed_when: false
+
+- name: Save kube-bench results to file
+  copy:
+    content: "{{ kube_bench_results.stdout }}"
+    dest: /tmp/kube-bench-results.txt
+
+- name: Print kube-bench summary
+  debug:
+    msg: "{{ kube_bench_results.stdout_lines }}"
