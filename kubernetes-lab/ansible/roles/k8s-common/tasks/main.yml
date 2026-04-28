@@ -1,19 +1,19 @@
 ---
-- name: Check if post-cloud-init reboot has been done
-  stat:
-    path: /var/lib/cloud/.ansible-rebooted
-  register: reboot_marker
-
-- name: Reboot after cloud-init
-  ansible.builtin.reboot:
-    reboot_timeout: 300
-  when: not reboot_marker.stat.exists
-
-- name: Mark reboot as done
-  file:
-    path: /var/lib/cloud/.ansible-rebooted
-    state: touch
-  when: not reboot_marker.stat.exists
+#- name: Check if post-cloud-init reboot has been done
+#  stat:
+#    path: /var/lib/cloud/.ansible-rebooted
+#  register: reboot_marker
+#
+#- name: Reboot after cloud-init
+#  ansible.builtin.reboot:
+#    reboot_timeout: 300
+#  when: not reboot_marker.stat.exists
+#
+#- name: Mark reboot as done
+#  file:
+#    path: /var/lib/cloud/.ansible-rebooted
+#    state: touch
+#  when: not reboot_marker.stat.exists
 
 - name: Disable swap
   command: swapoff -a
