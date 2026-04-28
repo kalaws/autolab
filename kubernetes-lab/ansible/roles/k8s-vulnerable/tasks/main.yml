@@ -12,22 +12,8 @@
     KUBECONFIG: /home/ansible/.kube/config
 
 # ============================================
-# 2. Installera Docker och bygg/pusha webapp-image
+# 2. Bygg och pusha webapp-image till Docker Hub
 # ============================================
-- name: Install Docker CE
-  apt:
-    name:
-      - docker-ce
-      - docker-ce-cli
-    state: present
-    update_cache: false
-
-- name: Start and enable Docker
-  systemd:
-    name: docker
-    enabled: true
-    state: started
-
 - name: Log in to Docker Hub
   community.docker.docker_login:
     username: "{{ dockerhub_username }}"

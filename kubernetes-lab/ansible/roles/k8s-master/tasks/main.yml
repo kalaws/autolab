@@ -53,3 +53,17 @@
     owner: admin
     group: admin
     mode: "0600"
+
+- name: Install Docker CE
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+    state: present
+    update_cache: false
+
+- name: Start and enable Docker
+  systemd:
+    name: docker
+    enabled: true
+    state: started
