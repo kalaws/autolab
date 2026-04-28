@@ -52,7 +52,7 @@ variable "dns_servers" {
 variable "workers" {
   type        = list(string)
   description = "Kubernetes worker nodes"
-  default     = ["1"]
+  default     = ["1", "2"]
 }
 
 variable "ssh_public_key_path" {
