@@ -1,14 +1,38 @@
 # ============================================
 # 1. ClusterAdmin service account (för bred behörighet)
 # ============================================
+- name: Copy vulnerable service account manifest
+  copy:
+    src: vulnerable-sa.yaml
+    dest: /tmp/vulnerable-sa.yaml
+
 - name: Apply vulnerable service account
-  command: kubectl apply -f {{ role_path }}/files/vulnerable-sa.yaml
+  command: kubectl apply -f /tmp/vulnerable-sa.yaml
   environment:
     KUBECONFIG: /home/ansible/.kube/config
 
 # ============================================
-# 2. Bygg och pusha webapp-image till Docker Hub
+# 2. Installera Docker och bygg/pusha webapp-image
 # ============================================
+- name: Install Docker CE
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+    state: present
+    update_cache: false
+
+- name: Start and enable Docker
+  systemd:
+    name: docker
+    enabled: true
+    state: started
+
+- name: Log in to Docker Hub
+  community.docker.docker_login:
+    username: "{{ dockerhub_username }}"
+    password: "{{ dockerhub_password }}"
+
 - name: Build webapp Docker image
   community.docker.docker_image:
     name: "{{ webapp_dockerhub_image }}"
@@ -22,6 +46,10 @@
     name: "{{ webapp_dockerhub_image }}"
     source: local
     push: true
+
+- name: Log out from Docker Hub
+  community.docker.docker_login:
+    state: absent
 
 # ============================================
 # 3. Webbapp-pod med cluster-admin service account
@@ -40,8 +68,13 @@
 # ============================================
 # 4. Exponera webapp via NodePort
 # ============================================
+- name: Copy webapp service manifest
+  copy:
+    src: webapp-svc.yaml
+    dest: /tmp/webapp-svc.yaml
+
 - name: Apply webapp service
-  command: kubectl apply -f {{ role_path }}/files/webapp-svc.yaml
+  command: kubectl apply -f /tmp/webapp-svc.yaml
   environment:
     KUBECONFIG: /home/ansible/.kube/config
 
@@ -49,7 +82,12 @@
 # 5. Hemligheter lagrade som Kubernetes Secret
 #    men monterade som env-variabler (dålig praxis)
 # ============================================
+- name: Copy insecure secret manifest
+  copy:
+    src: insecure-secret.yaml
+    dest: /tmp/insecure-secret.yaml
+
 - name: Apply insecure secret
-  command: kubectl apply -f {{ role_path }}/files/insecure-secret.yaml
+  command: kubectl apply -f /tmp/insecure-secret.yaml
   environment:
     KUBECONFIG: /home/ansible/.kube/config
