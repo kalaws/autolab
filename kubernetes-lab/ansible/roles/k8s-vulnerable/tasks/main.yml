@@ -14,6 +14,14 @@
 # ============================================
 # 2. Bygg och pusha webapp-image till Docker Hub
 # ============================================
+- name: Copy Docker build context to remote
+  copy:
+    src: "{{ item }}"
+    dest: /tmp/webapp-build/
+  loop:
+    - Dockerfile
+    - webapp.py
+
 - name: Log in to Docker Hub
   community.docker.docker_login:
     username: "{{ dockerhub_username }}"
@@ -23,7 +31,7 @@
   community.docker.docker_image:
     name: "{{ webapp_dockerhub_image }}"
     build:
-      path: "{{ role_path }}/files"
+      path: /tmp/webapp-build
     source: build
     push: false
 
