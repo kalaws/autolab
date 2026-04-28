@@ -7,9 +7,10 @@
     dest: /tmp/vulnerable-sa.yaml
 
 - name: Apply vulnerable service account
-  command: kubectl apply -f /tmp/vulnerable-sa.yaml
-  environment:
-    KUBECONFIG: /home/ansible/.kube/config
+  kubernetes.core.k8s:
+    src: /tmp/vulnerable-sa.yaml
+    state: present
+    kubeconfig: /home/ansible/.kube/config
 
 # ============================================
 # 2. Bygg och pusha webapp-image till Docker Hub
@@ -27,18 +28,13 @@
     username: "{{ dockerhub_username }}"
     password: "{{ dockerhub_token }}"
 
-- name: Build webapp Docker image
+- name: Build and push webapp Docker image
   community.docker.docker_image:
     name: "{{ webapp_dockerhub_image }}"
     build:
       path: /tmp/webapp-build
     source: build
-    push: false
-
-- name: Push webapp image to Docker Hub
-  community.docker.docker_image:
-    name: "{{ webapp_dockerhub_image }}"
-    source: local
+    force_source: false
     push: true
 
 - name: Log out from Docker Hub
@@ -46,7 +42,7 @@
     state: absent
 
 # ============================================
-# 3. Webbapp-pod med cluster-admin service account
+# 3. Webbapp-deployment med cluster-admin service account
 #    och secrets i klartext
 # ============================================
 - name: Render webapp deployment manifest
@@ -55,9 +51,10 @@
     dest: /tmp/webapp-pod.yaml
 
 - name: Apply webapp deployment
-  command: kubectl apply -f /tmp/webapp-pod.yaml
-  environment:
-    KUBECONFIG: /home/ansible/.kube/config
+  kubernetes.core.k8s:
+    src: /tmp/webapp-pod.yaml
+    state: present
+    kubeconfig: /home/ansible/.kube/config
 
 # ============================================
 # 4. Exponera webapp via NodePort
@@ -68,9 +65,10 @@
     dest: /tmp/webapp-svc.yaml
 
 - name: Apply webapp service
-  command: kubectl apply -f /tmp/webapp-svc.yaml
-  environment:
-    KUBECONFIG: /home/ansible/.kube/config
+  kubernetes.core.k8s:
+    src: /tmp/webapp-svc.yaml
+    state: present
+    kubeconfig: /home/ansible/.kube/config
 
 # ============================================
 # 5. Hemligheter lagrade som Kubernetes Secret
@@ -82,6 +80,7 @@
     dest: /tmp/insecure-secret.yaml
 
 - name: Apply insecure secret
-  command: kubectl apply -f /tmp/insecure-secret.yaml
-  environment:
-    KUBECONFIG: /home/ansible/.kube/config
+  kubernetes.core.k8s:
+    src: /tmp/insecure-secret.yaml
+    state: present
+    kubeconfig: /home/ansible/.kube/config
