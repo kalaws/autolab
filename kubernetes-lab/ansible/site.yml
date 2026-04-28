@@ -23,8 +23,8 @@
   roles:
     - k8s-vulnerable
 
-- name: Install security tools
-  hosts: control_plane
-  become: true
-  roles:
-    - k8s-security-tools
+#- name: Install security tools
+#  hosts: control_plane
+#  become: true
+#  roles:
+#    - k8s-security-tools
