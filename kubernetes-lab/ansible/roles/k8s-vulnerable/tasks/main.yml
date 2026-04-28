@@ -17,7 +17,7 @@
 - name: Log in to Docker Hub
   community.docker.docker_login:
     username: "{{ dockerhub_username }}"
-    password: "{{ dockerhub_password }}"
+    password: "{{ dockerhub_token }}"
 
 - name: Build webapp Docker image
   community.docker.docker_image:
