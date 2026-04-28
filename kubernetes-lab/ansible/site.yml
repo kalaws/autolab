@@ -9,7 +9,7 @@
   hosts: control_plane
   become: true
   roles:
-    - k8s-control
+    - k8s-master
 
 - name: Join workers
   hosts: workers
