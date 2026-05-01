@@ -61,6 +61,6 @@ EOF
   }
 
   provisioner "local-exec" {
-  command = "sleep 30 && ansible-playbook -i ${path.module}/../../ansible/inventory.ini ${path.module}/../../ansible/playbook.yml"
+  command = "sleep 60 && ansible-playbook -i ${path.module}/../../ansible/inventory.ini ${path.module}/../../ansible/playbook.yml"
   }
 }
