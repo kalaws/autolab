@@ -41,17 +41,17 @@ resource "proxmox_virtual_environment_vm" "vm" {
         }
     }
     provisioner "local-exec" {
-        command = <<EOT
-    cat > ${path.module}/../../ansible/inventory.ini <<EOF
-    [webservers]
-    ${self.name} ansible_host=${self.ipv4_addresses[1][0]}
+  command = <<-EOT
+    cat > ${path.module}/../../ansible/inventory.ini << 'EOF'
+[webservers]
+${self.name} ansible_host=${self.ipv4_addresses[1][0]}
 
-    [webservers:vars]
-    ansible_user=ubuntu
-    ansible_ssh_private_key_file=~/.ssh/id_ed25519
-    ansible_ssh_common_args='-o StrictHostKeyChecking=no'
-    EOF
-    EOT
-    }
+[webservers:vars]
+ansible_user=ubuntu
+ansible_ssh_private_key_file=~/.ssh/id_ed25519
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+EOF
+  EOT
+}
     
 }
