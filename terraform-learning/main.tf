@@ -16,6 +16,6 @@ module "learning_vm" {
   vm_name   = var.vm_name
   cpu_cores = var.cpu_cores
   memory    = var.memory
-  clone_id  = 116
+  clone_id  = 9001
   node_name = "pve"
 }
