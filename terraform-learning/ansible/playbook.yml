@@ -10,11 +10,11 @@
 
     - name: Installera nginx
       apt:
-        update_cache: yes
+        name: nginx
         state: present
 
     - name: Starta och aktivera nginx
       ansible.builtin.service:
-      name: nginx
-      state: started
-      enabled: yes
+        name: nginx
+        state: started
+        enabled: yes
