@@ -14,7 +14,7 @@
         state: present
 
     - name: Starta och aktivera nginx
-      service:
-        name: nginx
-        state: started
-        enabled: yes
+      ansible.builtin.service:
+      name: nginx
+      state: started
+      enabled: yes
