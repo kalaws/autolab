@@ -59,4 +59,8 @@ ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 EOF
     EOT
   }
+
+  provisioner "local-exec" {
+  command = "ansible-playbook -i ${path.module}/../../ansible/inventory.ini ${path.module}/../../ansible/playbook.yml"
+  }
 }
