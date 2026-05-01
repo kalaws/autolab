@@ -25,7 +25,7 @@ resource "proxmox_virtual_environment_vm" "vm" {
     }
 
     agent {
-        enabled = false
+        enabled = true
     }
 
     network_device {
