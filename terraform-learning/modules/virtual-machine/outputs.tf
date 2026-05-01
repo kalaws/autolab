@@ -7,3 +7,8 @@ output "vm_name" {
     description = "Namnet på den skapade VMen"
     value = proxmox_virtual_environment_vm.vm.name
 }
+
+output "vm_ip" {
+    description = "IP-adressen för VMen"
+    value = proxmox_virtual_environment_vm.vm.ipv4_addresses
+}
