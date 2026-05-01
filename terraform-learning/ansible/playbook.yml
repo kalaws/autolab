@@ -1,0 +1,20 @@
+---
+- name: Konfigurera webbserver
+  hosts: webservers
+  become: true
+
+  tasks:
+    - name: Uppdatera apt cache
+      apt:
+        update_cache: yes
+
+    - name: Installera nginx
+      apt:
+        update_cache: yes
+        state: present
+
+    - name: Starta och aktivera nginx
+      service:
+        name: nginx
+        state: started
+        enabled: yes
