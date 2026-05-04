@@ -1,0 +1,6 @@
+---
+- name: Starta nginx
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: yes

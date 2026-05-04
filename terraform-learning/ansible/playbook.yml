@@ -3,18 +3,4 @@
   hosts: webservers
   become: true
 
-  tasks:
-    - name: Uppdatera apt cache
-      apt:
-        update_cache: yes
-
-    - name: Installera nginx
-      apt:
-        name: nginx
-        state: present
-
-    - name: Starta och aktivera nginx
-      ansible.builtin.service:
-        name: nginx
-        state: started
-        enabled: yes
+  roles: nginx
