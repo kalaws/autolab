@@ -1,0 +1,10 @@
+---
+- name: Hämta join-kommando från control plane
+  delegate_to: "{{ groups['control_plane'][0] }}"
+  command: kubeadm token create --print-join-command
+  register: join_command
+
+- name: Anslut worker till klustret
+  command: "{{ join_command.stdout }}"
+  args:
+    creates: /etc/kubernetes/kubelet.conf
