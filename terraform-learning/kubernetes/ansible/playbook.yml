@@ -1,0 +1,24 @@
+---
+- name: Konfigurera alla noder
+  hosts: all
+  become: true
+  gather_facts: yes
+  vars:
+    ansible_ssh_retries: 10
+
+  roles:
+    - common
+
+- name: Konfigurera control plane
+  hosts: control_plane
+  become: true
+
+  roles:
+    - control-plane
+
+- name: Konfigurera worker noder
+  hosts: workers
+  become: true
+
+  roles:
+    - worker
