@@ -45,22 +45,4 @@ resource "proxmox_virtual_environment_vm" "vm" {
       keys     = ["ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFkJG0AoEd8MxvxkIA1+7k181xXwCHbdr/jjSm1ofc6E control-node@proxmox"]
     }
   }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      cat > ${path.module}/../../ansible/inventory.ini << 'EOF'
-[webservers]
-${self.name} ansible_host=${self.ipv4_addresses[1][0]}
-
-[webservers:vars]
-ansible_user=ubuntu
-ansible_ssh_private_key_file=~/.ssh/id_ed25519
-ansible_ssh_common_args='-o StrictHostKeyChecking=no'
-EOF
-    EOT
-  }
-
-  provisioner "local-exec" {
-  command = "sleep 30 && ansible-playbook -i ${path.module}/../../ansible/inventory.ini ${path.module}/../../ansible/playbook.yml"
-  }
 }
