@@ -1,4 +1,8 @@
 ---
+- name: Vänta tills apt är redo
+  shell: while fuser /var/lib/dpkg/lock-frontend > /dev/null 2>&1; do sleep 5; done
+  changed_when: false
+
 - name: Uppdatera apt cache
   apt: 
     update_cache: yes
