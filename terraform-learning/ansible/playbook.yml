@@ -3,4 +3,5 @@
   hosts: webservers
   become: true
 
-  roles: nginx
+  roles: 
+    - nginx
