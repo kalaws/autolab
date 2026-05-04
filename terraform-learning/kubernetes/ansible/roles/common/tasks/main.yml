@@ -1,0 +1,51 @@
+---
+- name: Uppdatera apt cache
+  apt: 
+    update_cache: yes
+
+- name: Installera nödvändiga paket
+  apt:
+    name: 
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gpg
+    state: present
+
+- name: Stäng av swap
+  command: swapoff -a
+
+- name: Inaktivera swap permanent
+  replace: 
+    path: /etc/fstab
+    regexp: '^([^#].*\sswap\s.*)$'
+    replace: '# \1'
+
+- name: Skapa katalog för Kubernetes GPG-nyckel
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
+- name: Ladda ner Kubernetes GPG-nyckel
+  shell: |
+    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+  args:
+    creates: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+- name: Lägg till Kubernetes apt-repo
+  copy:
+    content: 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /'
+    dest: /etc/apt/sources.list.d/kubernetes.list
+
+- name: Uppdatera apt cache efter repo
+  apt:
+    update_cache: yes
+
+- name: Installera Kubernetes-paket
+  apt:
+    name:
+      - kubelet
+      - kubeadm
+      - kubectl
+    state: present
