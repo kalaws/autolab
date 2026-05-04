@@ -49,3 +49,32 @@
       - kubeadm
       - kubectl
     state: present
+
+- name: Installera containerd
+  apt:
+    name: containerd
+    state: present
+
+- name: Skapa containerd konfigurationsmapp
+  file:
+    path: /etc/containerd
+    state: directory
+
+- name: Generera containerd konfiguration
+  shell: containerd config default > /etc/containerd/config.toml
+  args:
+    creates: /etc/containerd/config.toml
+
+- name: Starta och aktivera containerd
+  ansible.builtin.service:
+    name: containerd
+    state: started
+    enabled: yes
+
+- name: Aktivera ip_forward
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: yes
+    state: present
+    reload: yes
