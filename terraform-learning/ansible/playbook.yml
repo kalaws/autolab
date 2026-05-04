@@ -2,6 +2,9 @@
 - name: Konfigurera webbserver
   hosts: webservers
   become: true
+  gather_facts: yes
+  vars:
+    ansible_ssh_retries: 10
 
   roles: 
     - nginx
