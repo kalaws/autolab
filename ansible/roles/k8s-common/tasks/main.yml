@@ -9,12 +9,6 @@
     state: present
     update_cache: true
 
-- name: Skapa katalog för APT-nycklar
-  file:
-    path: /etc/apt/keyrings
-    state: directory
-    mode: '0755'
-
 - name: Ladda ner Kubernetes GPG-nyckel
   apt_key:
     url: https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key
