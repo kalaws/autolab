@@ -1,0 +1,9 @@
+---
+- name: Kontrollera om noden redan är joinad
+  stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: kubelet_conf
+
+- name: Joina worker till klustret
+  shell: "{{ hostvars[groups['control_plane'][0]]['join_command'] }}"
+  when: not kubelet_conf.stat.exists
