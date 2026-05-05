@@ -376,20 +376,3 @@ resource "terraform_data" "write_inventory" {
     EOT
   }
 }
-
-resource "terraform_data" "verify" {
-  depends_on = [
-    terraform_data.write_inventory,
-  ]
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      SSH_OPTS="-o StrictHostKeyChecking=no -i ${local_sensitive_file.terraform_ssh_private.filename}"
-      CONTROL_IP="${local.control_ip}"
-
-      echo "Verifierar att Ansible når alla noder..."
-      ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
-        "ANSIBLE_HOST_KEY_CHECKING=False ansible all -i /opt/${var.github_repo}/kubernetes-lab/ansible/inventory.ini -m ping"
-    EOT
-  }
-}
