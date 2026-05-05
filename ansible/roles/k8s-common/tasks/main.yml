@@ -1,0 +1,205 @@
+---
+- name: Installera beroenden
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+    state: present
+    update_cache: true
+
+- name: Skapa katalog för APT-nycklar
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
+- name: Ladda ner Kubernetes GPG-nyckel
+  apt_key:
+    url: https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key
+    state: present
+
+- name: Lägg till Kubernetes APT-repo
+  apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/kubernetes.asc] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /"
+    state: present
+    filename: kubernetes
+
+- name: Installera Kubernetes-paket
+  apt:
+    name:
+      - kubelet
+      - kubeadm
+      - kubectl
+    state: present
+    update_cache: true
+
+- name: Lås Kubernetes-paket till nuvarande version
+  dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  loop:
+    - kubelet
+    - kubeadm
+    - kubectl
+
+- name: Aktivera och starta kubelet
+  systemd:
+    name: kubelet
+    enabled: true
+    state: started
+
+- name: Ladda kernel-moduler
+  modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - overlay
+    - br_netfilter
+
+- name: Säkerställ att kernel-moduler laddas vid omstart
+  copy:
+    dest: /etc/modules-load.d/kubernetes.conf
+    content: |
+      overlay
+      br_netfilter
+
+- name: Sätt kernel-parametrar för Kubernetes
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/kubernetes.conf
+    reload: true
+  loop:
+    - { key: "net.bridge.bridge-nf-call-iptables",  value: "1" }
+    - { key: "net.bridge.bridge-nf-call-ip6tables", value: "1" }
+    - { key: "net.ipv4.ip_forward",                 value: "1" }
+
+- name: Installera containerd
+  apt:
+    name: containerd
+    state: present
+    update_cache: true
+
+- name: Skapa katalog för containerd-konfiguration
+  file:
+    path: /etc/containerd
+    state: directory
+    mode: '0755'
+
+- name: Generera standard containerd-konfiguration
+  shell: containerd config default > /etc/containerd/config.toml
+  args:
+    creates: /etc/containerd/config.toml
+
+- name: Aktivera SystemdCgroup i containerd
+  replace:
+    path: /etc/containerd/config.toml
+    regexp: 'SystemdCgroup = false'
+    replace: 'SystemdCgroup = true'
+
+- name: Aktivera och starta containerd
+  systemd:
+    name: containerd
+    enabled: true
+    state: restarted
+
+# ============================================
+# Initiera Kubernetes control plane
+# ============================================
+- name: Initiera Kubernetes control plane
+  hosts: control_plane
+  become: true
+  tasks:
+
+- name: Kontrollera om klustret redan är initierat
+  stat:
+    path: /etc/kubernetes/admin.conf
+  register: kubeadm_init
+
+- name: Initiera Kubernetes-klustret
+  shell: kubeadm init --pod-network-cidr=10.244.0.0/16
+  when: not kubeadm_init.stat.exists
+
+- name: Skapa .kube-katalog för ansible-användaren
+  file:
+    path: /home/ansible/.kube
+    state: directory
+    mode: '0755'
+    owner: ansible
+    group: ansible
+
+- name: Kopiera admin.conf till ansible-användaren
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /home/ansible/.kube/config
+    remote_src: true
+    owner: ansible
+    group: ansible
+    mode: '0600'
+
+- name: Hämta join-kommando för workers
+  shell: kubeadm token create --print-join-command
+  register: join_command
+
+- name: Spara join-kommando som fact
+  set_fact:
+    join_command: "{{ join_command.stdout }}"
+
+# ============================================
+# Joina workers till klustret
+# ============================================
+- name: Joina worker nodes till klustret
+  hosts: workers
+  become: true
+  tasks:
+
+    - name: Kontrollera om noden redan är joinad
+      stat:
+        path: /etc/kubernetes/kubelet.conf
+      register: kubelet_conf
+
+    - name: Joina worker till klustret
+      shell: "{{ hostvars[groups['control_plane'][0]]['join_command'] }}"
+      when: not kubelet_conf.stat.exists
+
+# ============================================
+# Installera nätverksplugin (Flannel)
+# ============================================
+- name: Installera Flannel nätverksplugin
+  hosts: control_plane
+  become: true
+  tasks:
+
+    - name: Installera Flannel
+      shell: kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+
+# ============================================
+# Verifiera klustret
+# ============================================
+- name: Verifiera att klustret är uppe
+  hosts: control_plane
+  become: true
+  tasks:
+
+    - name: Vänta på att alla noder blir Ready
+      shell: kubectl get nodes --no-headers | grep -v Ready | wc -l
+      register: not_ready
+      until: not_ready.stdout == "0"
+      retries: 20
+      delay: 15
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+
+    - name: Visa nodstatus
+      shell: kubectl get nodes
+      register: node_status
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+
+    - name: Skriv ut nodstatus
+      debug:
+        msg: "{{ node_status.stdout_lines }}"
