@@ -11,11 +11,6 @@
   args:
     creates: /etc/kubernetes/admin.conf
 
-- name: Installera Calico
-  command: kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.0/manifests/calico.yaml
-  environment:
-    KUBECONFIG: /home/ansible/.kube/config
-
 - name: Skapa .kube-katalog för ansible-användaren
   file:
     path: /home/ansible/.kube
@@ -32,6 +27,11 @@
     owner: ansible
     group: ansible
     mode: '0600'
+
+- name: Installera Calico
+  command: kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.0/manifests/calico.yaml
+  environment:
+    KUBECONFIG: /home/ansible/.kube/config
 
 - name: Hämta join-kommando för workers
   shell: kubeadm token create --print-join-command
