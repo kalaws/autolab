@@ -8,9 +8,15 @@
 • K8S-master (VM) 
 • K8S-worker-1 (VM) 
 
-3.  Roles 
+3. Basic K8S Ansible roles 
 • K8S-common 
 • K8S-master 
-• K8S-worker 
-• K8S-security-tool 
-• K8S-vulnerable 
+• K8S-worker
+
+4. Vulnerable web app with load balancing (~5 pods)
+• Docker image
+• Ansible role: K8S-vulnerable
+
+5. Hardening
+• K8S-security-tool
+• K8S-hardening
