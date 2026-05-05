@@ -49,3 +49,67 @@ data "proxmox_virtual_environment_vms" "packer_template" {
     values = var.packer_template
   }
 }
+
+# ============================================
+# 2. Klona Ansible control node CT
+# ============================================
+resource "proxmox_virtual_environment_container" "ansible" {
+  description = "Ansible control node (CT)"
+  node_name   = "pve"
+  unprivileged = true
+
+  features {
+    nesting = true
+  }
+
+  initialization {
+    hostname = var.resources["ansible"].hostname
+
+    dns {
+      servers = var.dns_servers
+    }
+
+    ip_config {
+      ipv4 {
+        address = "dhcp"
+      }
+    }
+
+    user_account {
+      keys = [trimspace(tls_private_key.terraform_ssh.public_key_openssh), trimspace(file(pathexpand(var.ssh_public_key_path)))]
+    }
+  }
+
+  memory {
+    dedicated = var.resources["ansible"].memory
+  }
+
+  cpu {
+    cores = var.resources["ansible"].cores
+  }
+  
+  disk {
+    datastore_id = "local-lvm"     
+    size         = var.resources["ansible"].disk  
+  }
+
+  network_interface {
+    name   = "eth0"
+    bridge = var.bridge_wan
+  }
+
+  operating_system {
+    template_file_id = var.ct_template
+    type             = "ubuntu"
+  }
+
+  started = true
+}
+
+locals {
+  control_ip = proxmox_virtual_environment_container.ansible.ipv4["eth0"]
+  target_ips = merge(
+    { "control" = proxmox_virtual_environment_vm.k8s_control.ipv4_addresses[1][0] },
+    { for name, vm in proxmox_virtual_environment_vm.k8s_worker : name => vm.ipv4_addresses[1][0] }
+  )
+}
