@@ -22,9 +22,8 @@
 
 - name: Lägg till Kubernetes APT-repo
   apt_repository:
-    repo: "deb [signed-by=/etc/apt/keyrings/kubernetes.asc] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /"
+    repo: "deb https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /"
     state: present
-    filename: kubernetes
 
 - name: Installera Kubernetes-paket
   apt:
