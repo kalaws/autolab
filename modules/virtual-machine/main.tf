@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    proxmox = {
+      source  = "bpg/proxmox"
+      version = "0.100.0"
+    }
+  }
+}
+
 data "proxmox_virtual_environment_vms" "packer_template" {
   node_name = var.node_name
   filter {
