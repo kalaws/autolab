@@ -110,29 +110,3 @@
   environment:
     KUBECONFIG: /etc/kubernetes/admin.conf
 
-# ============================================
-# Verifiera klustret
-# ============================================
-- name: Verifiera att klustret är uppe
-  hosts: control_plane
-  become: true
-  tasks:
-
-    - name: Vänta på att alla noder blir Ready
-      shell: kubectl get nodes --no-headers | grep -v Ready | wc -l
-      register: not_ready
-      until: not_ready.stdout == "0"
-      retries: 20
-      delay: 15
-      environment:
-        KUBECONFIG: /etc/kubernetes/admin.conf
-
-    - name: Visa nodstatus
-      shell: kubectl get nodes
-      register: node_status
-      environment:
-        KUBECONFIG: /etc/kubernetes/admin.conf
-
-    - name: Skriv ut nodstatus
-      debug:
-        msg: "{{ node_status.stdout_lines }}"

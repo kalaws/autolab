@@ -1,0 +1,80 @@
+---
+- name: Verifiera Kubernetes-kluster
+  hosts: control_plane
+  become: true
+  vars:
+    kubeconfig: /home/ansible/.kube/config
+
+  tasks:
+    - name: Hämta nodstatus
+      command: kubectl get nodes -o json
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      register: nodes_json
+      changed_when: false
+
+    - name: Extrahera noddata
+      set_fact:
+        nodes: >-
+          {{
+            (nodes_json.stdout | from_json)['items'] | map('combine', {}) | list
+            | json_query('[].{
+                name: metadata.name,
+                ready: status.conditions[?type==`Ready`].status | [0],
+                labels: keys(metadata.labels)
+              }')
+          }}
+
+    - name: Kontrollera att alla noder är Ready
+      assert:
+        that: item.ready == 'True'
+        fail_msg: "{{ item.name }} är inte Ready"
+        success_msg: "{{ item.name }} är Ready"
+      loop: "{{ nodes }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Kontrollera att control plane har rätt roll
+      assert:
+        that: "'node-role.kubernetes.io/control-plane' in item.labels"
+        fail_msg: "{{ item.name }} saknar control-plane-roll"
+        success_msg: "{{ item.name }} har control-plane-roll"
+      loop: "{{ nodes | rejectattr('labels', 'contains', 'node-role.kubernetes.io/worker') | list }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Kontrollera att workers har rätt roll
+      assert:
+        that: "'node-role.kubernetes.io/worker' in item.labels"
+        fail_msg: "{{ item.name }} saknar worker-roll"
+        success_msg: "{{ item.name }} har worker-roll"
+      loop: "{{ nodes | rejectattr('labels', 'contains', 'node-role.kubernetes.io/control-plane') | list }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Kontrollera att kube-system-poddar är Running
+      command: >
+        kubectl get pods -n kube-system
+        --field-selector=status.phase!=Running
+        --no-headers
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      register: not_running
+      changed_when: false
+
+    - name: Säkerställ att alla kube-system-poddar kör
+      assert:
+        that: not_running.stdout == ""
+        fail_msg: "Följande poddar i kube-system är inte Running:\n{{ not_running.stdout }}"
+        success_msg: "Alla kube-system-poddar kör"
+
+    - name: Visa nodöversikt
+      command: kubectl get nodes -o wide
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      register: nodes_wide
+      changed_when: false
+
+    - name: Skriv ut nodöversikt
+      debug:
+        msg: "{{ nodes_wide.stdout_lines }}"
