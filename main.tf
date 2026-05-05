@@ -352,3 +352,27 @@ resource "terraform_data" "create_admin_k8s" {
     EOT
   }
 }
+
+# ============================================
+# 7. Skriv Ansible inventory
+# ============================================
+resource "terraform_data" "write_inventory" {
+  depends_on = [
+    proxmox_virtual_environment_vm.k8s_control,
+    proxmox_virtual_environment_vm.k8s_worker,
+    terraform_data.bootstrap_control,
+    terraform_data.create_admin_k8s,
+  ]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      CONTROL_IP="${local.control_ip}"
+      CONTROL_SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
+
+      echo "Skriver inventory på ansible control node..."
+      ssh $CONTROL_SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
+        "sudo -u ansible bash -c 'mkdir -p /opt/${var.github_repo}/kubernetes-lab/ansible && printf \"[control_plane]\n${proxmox_virtual_environment_vm.k8s_control.ipv4_addresses[1][0]} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519\n\n[workers]\n${join("\\n", [for name, vm in proxmox_virtual_environment_vm.k8s_worker : "${vm.ipv4_addresses[1][0]} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519"])}\n\" > /opt/${var.github_repo}/kubernetes-lab/ansible/inventory.ini'"
+
+    EOT
+  }
+}
