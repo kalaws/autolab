@@ -40,18 +40,7 @@ resource "local_sensitive_file" "ansible_ssh_private" {
 }
 
 # ============================================
-# 1. Slå upp Packer-byggt template
-# ============================================
-data "proxmox_virtual_environment_vms" "packer_template" {
-  node_name = "pve"
-  filter {
-    name   = "name"
-    values = var.packer_template
-  }
-}
-
-# ============================================
-# 2. Klona Ansible control node CT
+# 1. Klona Ansible control node CT
 # ============================================
 resource "proxmox_virtual_environment_container" "ansible" {
   description = "Ansible control node (CT)"
@@ -109,13 +98,13 @@ resource "proxmox_virtual_environment_container" "ansible" {
 locals {
   control_ip = proxmox_virtual_environment_container.ansible.ipv4["eth0"]
   target_ips = merge(
-    { "control" = proxmox_virtual_environment_vm.k8s_control.ipv4_addresses[1][0] },
-    { for name, vm in proxmox_virtual_environment_vm.k8s_worker : name => try(vm.ipv4_addresses[1][0], "") }
+    { "control" = module.k8s_control.ipv4_address },
+    { for name, vm in module.k8s_worker : name => vm.ipv4_address }
   )
 }
 
 # ============================================
-# 3. Bootstrappa Ansible control node
+# 2. Bootstrappa Ansible control node
 # ============================================
 resource "terraform_data" "bootstrap_control" {
   depends_on = [
@@ -211,115 +200,47 @@ resource "terraform_data" "bootstrap_control" {
 }
 
 # ============================================
-# 4. Klona Kubernetes control node VM
+# 3. Klona Kubernetes control node VM
 # ============================================
-resource "proxmox_virtual_environment_vm" "k8s_control" {
-  name      = var.resources["k8s_control"].hostname
-  node_name = "pve"
+module "k8s_control" {
+  source = "./modules/virtual-machine"
 
-  clone {
-    vm_id = data.proxmox_virtual_environment_vms.packer_template.vms[0].vm_id
-  }
-
-  memory {
-    dedicated = var.resources["k8s_control"].memory
-  }
-
-  cpu {
-    cores = var.resources["k8s_control"].cores
-  }
-  
-  disk {
-    datastore_id = "local-lvm"     
-    interface    = "virtio0"     
-    iothread     = true     
-    discard      = "on"     
-    size         = var.resources["k8s_control"].disk  
-  }
-
-  network_device {
-    bridge = var.bridge_wan
-  }
-
-  initialization {
-    ip_config {
-      ipv4 {
-        address = "dhcp"
-      }
-    }
-
-    user_account {
-      username = var.ansible_user
-      keys     = [trimspace(tls_private_key.ansible_ssh.public_key_openssh)]
-    }
-  }
-
-  stop_on_destroy = true
-
-  agent {
-    enabled = true
-  }
+  vm_name                = var.resources["k8s_control"].hostname
+  node_name              = "pve"
+  packer_template        = var.packer_template
+  memory                 = var.resources["k8s_control"].memory
+  cpu_cores              = var.resources["k8s_control"].cores
+  disk                   = var.resources["k8s_control"].disk
+  bridge_wan             = var.bridge_wan
+  ansible_user           = var.ansible_user
+  ansible_ssh_public_key = trimspace(tls_private_key.ansible_ssh.public_key_openssh)
 }
 
 # ============================================
-# 5. Klona Kubernetes worker nodes VM
+# 4. Klona Kubernetes worker nodes VM
 # ============================================
-resource "proxmox_virtual_environment_vm" "k8s_worker" {
-  for_each  = toset(var.workers)
-  name      = "${var.resources["k8s_worker"].hostname}-${each.key}"
-  node_name = "pve"
+module "k8s_worker" {
+  source   = "./modules/virtual-machine"
+  for_each = toset(var.workers)
 
-  clone {
-    vm_id = data.proxmox_virtual_environment_vms.packer_template.vms[0].vm_id
-  }
-
-  memory {
-    dedicated = var.resources["k8s_worker"].memory
-  }
-
-  cpu {
-    cores = var.resources["k8s_worker"].cores
-  }
-
-  disk {
-    datastore_id = "local-lvm"
-    interface    = "virtio0"
-    iothread     = true
-    discard      = "on"
-    size         = var.resources["k8s_worker"].disk
-  }
-
-  network_device {
-    bridge = var.bridge_wan
-  }
-
-  initialization {
-    ip_config {
-      ipv4 {
-        address = "dhcp"
-      }
-    }
-
-    user_account {
-      username = var.ansible_user
-      keys     = [trimspace(tls_private_key.ansible_ssh.public_key_openssh)]
-    }
-  }
-
-  stop_on_destroy = true
-
-  agent {
-    enabled = true
-  }
+  vm_name                = "${var.resources["k8s_worker"].hostname}-${each.key}"
+  node_name              = "pve"
+  packer_template        = var.packer_template
+  memory                 = var.resources["k8s_worker"].memory
+  cpu_cores              = var.resources["k8s_worker"].cores
+  disk                   = var.resources["k8s_worker"].disk
+  bridge_wan             = var.bridge_wan
+  ansible_user           = var.ansible_user
+  ansible_ssh_public_key = trimspace(tls_private_key.ansible_ssh.public_key_openssh)
 }
 
 # ============================================
-# 6. Skapa admin-användare på k8s-noder
+# 5. Skapa admin-användare på k8s-noder
 # ============================================
 resource "terraform_data" "create_admin_k8s" {
   depends_on = [
-    proxmox_virtual_environment_vm.k8s_control,
-    proxmox_virtual_environment_vm.k8s_worker,
+    module.k8s_control,
+    module.k8s_worker,
   ]
 
   provisioner "local-exec" {
@@ -345,21 +266,21 @@ resource "terraform_data" "create_admin_k8s" {
         "
       }
 
-      create_admin "${proxmox_virtual_environment_vm.k8s_control.ipv4_addresses[1][0]}"
-      %{~ for name, vm in proxmox_virtual_environment_vm.k8s_worker }
-      create_admin "${vm.ipv4_addresses[1][0]}"
+      create_admin "${module.k8s_control.ipv4_address}"
+      %{~ for name, vm in module.k8s_worker }
+      create_admin "${vm.ipv4_address}"
       %{~ endfor }
     EOT
   }
 }
 
 # ============================================
-# 7. Skriv Ansible inventory
+# 6. Skriv Ansible inventory
 # ============================================
 resource "terraform_data" "write_inventory" {
   depends_on = [
-    proxmox_virtual_environment_vm.k8s_control,
-    proxmox_virtual_environment_vm.k8s_worker,
+    module.k8s_control,
+    module.k8s_worker,
     terraform_data.bootstrap_control,
     terraform_data.create_admin_k8s,
   ]
@@ -371,7 +292,7 @@ resource "terraform_data" "write_inventory" {
 
       echo "Skriver inventory på ansible control node..."
       ssh $CONTROL_SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
-        "sudo -u ansible bash -c 'mkdir -p /opt/${var.github_repo}/ansible && printf \"[control_plane]\n${proxmox_virtual_environment_vm.k8s_control.ipv4_addresses[1][0]} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519\n\n[workers]\n${join("\\n", [for name, vm in proxmox_virtual_environment_vm.k8s_worker : "${vm.ipv4_addresses[1][0]} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519"])}\n\" > /opt/${var.github_repo}/ansible/inventory.ini'"
+        "sudo -u ansible bash -c 'mkdir -p /opt/${var.github_repo}/ansible && printf \"[control_plane]\n${module.k8s_control.ipv4_address} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519\n\n[workers]\n${join("\\n", [for name, vm in module.k8s_worker : "${vm.ipv4_address} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519"])}\n\" > /opt/${var.github_repo}/ansible/inventory.ini'"
 
     EOT
   }
