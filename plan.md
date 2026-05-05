@@ -6,7 +6,7 @@
 2. terraform 
 • ansible-control (CT) 
 • K8S-master (VM) 
-• K8S-worker-1 (VM) 
+• K8S-workers (VM [2 x clones]) 
 
 3. Basic K8S Ansible roles 
 • K8S-common 
