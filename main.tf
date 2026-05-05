@@ -389,7 +389,7 @@ resource "terraform_data" "verify" {
 
       echo "Verifierar att Ansible når alla noder..."
       ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
-        "ansible all -i /opt/${var.github_repo}/kubernetes-lab/ansible/inventory.ini -m ping"
+        "ANSIBLE_HOST_KEY_CHECKING=False ansible all -i /opt/${var.github_repo}/kubernetes-lab/ansible/inventory.ini -m ping"
     EOT
   }
 }
