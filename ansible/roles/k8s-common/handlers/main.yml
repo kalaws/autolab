@@ -1,0 +1,5 @@
+- name: Aktivera och starta containerd
+  systemd:
+    name: containerd
+    enabled: true
+    state: restarted

@@ -92,9 +92,3 @@
     regexp: 'SystemdCgroup = false'
     replace: 'SystemdCgroup = true'
 
-- name: Aktivera och starta containerd
-  systemd:
-    name: containerd
-    enabled: true
-    state: restarted
-
