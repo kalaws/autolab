@@ -1,16 +1,15 @@
-- name: Initiera Kubernetes control plane
-  hosts: control_plane
-  become: true
-  tasks:
-
 - name: Kontrollera om klustret redan är initierat
   stat:
     path: /etc/kubernetes/admin.conf
   register: kubeadm_init
 
-- name: Initiera Kubernetes-klustret
-  shell: kubeadm init --pod-network-cidr=10.244.0.0/16
-  when: not kubeadm_init.stat.exists
+- name: Initialize cluster
+  command: >
+    kubeadm init
+    --pod-network-cidr=10.244.0.0/16
+    --upload-certs
+  args:
+    creates: /etc/kubernetes/admin.conf
 
 - name: Skapa .kube-katalog för ansible-användaren
   file:
