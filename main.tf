@@ -209,3 +209,54 @@ resource "terraform_data" "bootstrap_control" {
     EOT
   }
 }
+
+# ============================================
+# 4. Klona Kubernetes control node VM
+# ============================================
+resource "proxmox_virtual_environment_vm" "k8s_control" {
+  name      = var.resources["k8s_control"].hostname
+  node_name = "pve"
+
+  clone {
+    vm_id = data.proxmox_virtual_environment_vms.packer_template.vms[0].vm_id
+  }
+
+  memory {
+    dedicated = var.resources["k8s_control"].memory
+  }
+
+  cpu {
+    cores = var.resources["k8s_control"].cores
+  }
+  
+  disk {
+    datastore_id = "local-lvm"     
+    interface    = "virtio0"     
+    iothread     = true     
+    discard      = "on"     
+    size         = var.resources["k8s_control"].disk  
+  }
+
+  network_device {
+    bridge = var.bridge_wan
+  }
+
+  initialization {
+    ip_config {
+      ipv4 {
+        address = "dhcp"
+      }
+    }
+
+    user_account {
+      username = var.ansible_user
+      keys     = [trimspace(tls_private_key.ansible_ssh.public_key_openssh)]
+    }
+  }
+
+  stop_on_destroy = true
+
+  agent {
+    enabled = true
+  }
+}
