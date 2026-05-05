@@ -12,35 +12,10 @@ terraform {
       source  = "hashicorp/local"
       version = "~> 2.0"
     }
-    github = {
-      source  = "integrations/github"
-      version = "~> 6.0"
-    }
   }
 }
 
 provider "proxmox" {}
-provider "github" {
-  owner = var.github_owner
-}
-
-# Deploy key för git clone på control node
-resource "tls_private_key" "deploy_key" {
-  algorithm = "ED25519"
-}
-
-resource "local_sensitive_file" "deploy_private_key" {
-  content         = tls_private_key.deploy_key.private_key_openssh
-  filename        = "${path.module}/.deploy_ed25519"
-  file_permission = "0600"
-}
-
-resource "github_repository_deploy_key" "autolab" {
-  title      = "LAB-ANSIBLE-CT-control"
-  repository = var.github_repo
-  key        = tls_private_key.deploy_key.public_key_openssh
-  read_only  = true
-}
 
 # SSH-nyckel för Terraform → CT-åtkomst (injiceras via user_account.keys)
 resource "tls_private_key" "terraform_ssh" {
@@ -145,7 +120,6 @@ locals {
 resource "terraform_data" "bootstrap_control" {
   depends_on = [
     proxmox_virtual_environment_container.ansible,
-    github_repository_deploy_key.autolab,
   ]
 
   provisioner "local-exec" {
@@ -192,15 +166,13 @@ resource "terraform_data" "bootstrap_control" {
 
       echo "Kopierar nycklar till control node..."
       scp $SSH_OPTS ${local_sensitive_file.ansible_ssh_private.filename} ${var.terraform_ssh_user}@$CONTROL_IP:/tmp/ansible_ed25519
-      scp $SSH_OPTS ${local_sensitive_file.deploy_private_key.filename} ${var.terraform_ssh_user}@$CONTROL_IP:/tmp/deploy_ed25519
 
       echo "Installerar nycklar och SSH-config för ansible-användaren..."
       ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
         sudo mkdir -p /home/ansible/.ssh
         sudo mv /tmp/ansible_ed25519 /home/ansible/.ssh/ansible_ed25519
-        sudo mv /tmp/deploy_ed25519 /home/ansible/.ssh/deploy_ed25519
-        sudo chmod 600 /home/ansible/.ssh/ansible_ed25519 /home/ansible/.ssh/deploy_ed25519
-        sudo bash -c 'printf \"Host 10.*\n  User ansible\n  IdentityFile ~/.ssh/ansible_ed25519\n  StrictHostKeyChecking no\n\nHost github.com\n  IdentityFile ~/.ssh/deploy_ed25519\n  StrictHostKeyChecking no\n\" > /home/ansible/.ssh/config'
+        sudo chmod 600 /home/ansible/.ssh/ansible_ed25519
+        sudo bash -c 'printf \"Host 10.*\n  User ansible\n  IdentityFile ~/.ssh/ansible_ed25519\n  StrictHostKeyChecking no\n\" > /home/ansible/.ssh/config'
         sudo chmod 600 /home/ansible/.ssh/config
         sudo chown -R ansible:ansible /home/ansible/.ssh
       "
@@ -209,9 +181,8 @@ resource "terraform_data" "bootstrap_control" {
       ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
         sudo mkdir -p /home/admin/.ssh
         sudo cp /home/ansible/.ssh/ansible_ed25519 /home/admin/.ssh/ansible_ed25519
-        sudo cp /home/ansible/.ssh/deploy_ed25519 /home/admin/.ssh/deploy_ed25519
-        sudo chmod 600 /home/admin/.ssh/ansible_ed25519 /home/admin/.ssh/deploy_ed25519
-        sudo bash -c 'printf \"Host 10.*\n  User admin\n  IdentityFile ~/.ssh/ansible_ed25519\n  StrictHostKeyChecking no\n\nHost github.com\n  IdentityFile ~/.ssh/deploy_ed25519\n  StrictHostKeyChecking no\n\" > /home/admin/.ssh/config'
+        sudo chmod 600 /home/admin/.ssh/ansible_ed25519
+        sudo bash -c 'printf \"Host 10.*\n  User admin\n  IdentityFile ~/.ssh/ansible_ed25519\n  StrictHostKeyChecking no\n\" > /home/admin/.ssh/config'
         sudo chmod 600 /home/admin/.ssh/config
         sudo chown -R admin:admin /home/admin/.ssh
       "
@@ -228,7 +199,7 @@ resource "terraform_data" "bootstrap_control" {
         set -e
         sudo mkdir /opt/${var.github_repo}
         sudo chown ansible:ansible /opt/${var.github_repo}
-        sudo -u ansible git clone git@github.com:${var.github_owner}/${var.github_repo}.git /opt/${var.github_repo}
+        sudo -u ansible git clone https://github.com/${var.github_owner}/${var.github_repo}.git /opt/${var.github_repo}
         sudo find /opt/${var.github_repo} -type d -exec chmod g+rwxs {} +
         sudo find /opt/${var.github_repo} -type f -exec chmod g+rw {} +
         sudo usermod -aG ansible admin
