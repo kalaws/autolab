@@ -38,3 +38,14 @@ resource "local_sensitive_file" "ansible_ssh_private" {
   filename        = "${path.module}/.ansible_ed25519"
   file_permission = "0600"
 }
+
+# ============================================
+# 1. Slå upp Packer-byggt template
+# ============================================
+data "proxmox_virtual_environment_vms" "packer_template" {
+  node_name = "pve"
+  filter {
+    name   = "name"
+    values = var.packer_template
+  }
+}
