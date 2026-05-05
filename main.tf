@@ -16,3 +16,25 @@ terraform {
 }
 
 provider "proxmox" {}
+
+# SSH-nyckel för Terraform → CT-åtkomst (injiceras via user_account.keys)
+resource "tls_private_key" "terraform_ssh" {
+  algorithm = "ED25519"
+}
+
+resource "local_sensitive_file" "terraform_ssh_private" {
+  content         = tls_private_key.terraform_ssh.private_key_openssh
+  filename        = "${path.module}/.terraform_ed25519"
+  file_permission = "0600"
+}
+
+# SSH-nyckel för ansible control → targets (injiceras i targets via API, privnyckel kopieras till control)
+resource "tls_private_key" "ansible_ssh" {
+  algorithm = "ED25519"
+}
+
+resource "local_sensitive_file" "ansible_ssh_private" {
+  content         = tls_private_key.ansible_ssh.private_key_openssh
+  filename        = "${path.module}/.ansible_ed25519"
+  file_permission = "0600"
+}
