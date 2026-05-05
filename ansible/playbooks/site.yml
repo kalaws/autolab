@@ -153,3 +153,59 @@
       set_fact:
         join_command: "{{ join_command.stdout }}"
 
+# ============================================
+# Joina workers till klustret
+# ============================================
+- name: Joina worker nodes till klustret
+  hosts: workers
+  become: true
+  tasks:
+
+    - name: Kontrollera om noden redan är joinad
+      stat:
+        path: /etc/kubernetes/kubelet.conf
+      register: kubelet_conf
+
+    - name: Joina worker till klustret
+      shell: "{{ hostvars[groups['control_plane'][0]]['join_command'] }}"
+      when: not kubelet_conf.stat.exists
+
+# ============================================
+# Installera nätverksplugin (Flannel)
+# ============================================
+- name: Installera Flannel nätverksplugin
+  hosts: control_plane
+  become: true
+  tasks:
+
+    - name: Installera Flannel
+      shell: kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+
+# ============================================
+# Verifiera klustret
+# ============================================
+- name: Verifiera att klustret är uppe
+  hosts: control_plane
+  become: true
+  tasks:
+
+    - name: Vänta på att alla noder blir Ready
+      shell: kubectl get nodes --no-headers | grep -v Ready | wc -l
+      register: not_ready
+      until: not_ready.stdout == "0"
+      retries: 20
+      delay: 15
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+
+    - name: Visa nodstatus
+      shell: kubectl get nodes
+      register: node_status
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+
+    - name: Skriv ut nodstatus
+      debug:
+        msg: "{{ node_status.stdout_lines }}"
