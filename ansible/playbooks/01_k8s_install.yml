@@ -1,0 +1,15 @@
+---
+- name: Installera Kubernetes på alla noder
+  hosts: all
+  become: true
+  tasks:
+
+    - name: Installera beroenden
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+        state: present
+        update_cache: true
