@@ -110,7 +110,7 @@ locals {
   control_ip = proxmox_virtual_environment_container.ansible.ipv4["eth0"]
   target_ips = merge(
     { "control" = proxmox_virtual_environment_vm.k8s_control.ipv4_addresses[1][0] },
-    { for name, vm in proxmox_virtual_environment_vm.k8s_worker : name => vm.ipv4_addresses[1][0] }
+    { for name, vm in proxmox_virtual_environment_vm.k8s_worker : name => try(vm.ipv4_addresses[1][0], "") }
   )
 }
 
