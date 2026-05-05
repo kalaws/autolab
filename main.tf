@@ -96,7 +96,7 @@ resource "proxmox_virtual_environment_container" "ansible" {
 }
 
 locals {
-  control_ip = proxmox_virtual_environment_container.ansible.ipv4["eth0"]
+  control_ip = try(proxmox_virtual_environment_container.ansible.ipv4["eth0"], "")
   target_ips = merge(
     { "control" = module.k8s_control.ipv4_address },
     { for name, vm in module.k8s_worker : name => vm.ipv4_address }
@@ -113,7 +113,39 @@ resource "terraform_data" "bootstrap_control" {
 
   provisioner "local-exec" {
     command = <<-EOT
+      # Proxmox populerar ipv4-kartan asynkront — falla tillbaka på API-polling vid race condition
+      resolve_proxmox_ip() {
+        local vmid=$1 endpoint="${PROXMOX_VE_ENDPOINT%/}"
+        if [ -n "${PROXMOX_VE_API_TOKEN:-}" ]; then
+          AUTH="-H \"Authorization: PVEAPIToken=$PROXMOX_VE_API_TOKEN\""
+        else
+          local ticket
+          ticket=$(curl -fsSk -X POST "$endpoint/api2/json/access/ticket" \
+            -d "username=$PROXMOX_VE_USERNAME&password=$PROXMOX_VE_PASSWORD" | \
+            python3 -c "import sys,json; print(json.load(sys.stdin)['data']['ticket'])" 2>/dev/null)
+          AUTH="-b \"PVEAuthCookie=$ticket\""
+        fi
+        eval curl -fsSk $AUTH "$endpoint/api2/json/nodes/pve/lxc/$vmid/interfaces" 2>/dev/null | \
+          python3 -c "
+import sys,json
+try:
+    d=json.load(sys.stdin).get('data',[])
+    print(next((i['inet'].split('/')[0] for i in d if i.get('name')=='eth0' and 'inet' in i),''))
+except: print('')
+" 2>/dev/null
+      }
+
+      VMID="${proxmox_virtual_environment_container.ansible.vm_id}"
       CONTROL_IP="${local.control_ip}"
+      if [ -z "$CONTROL_IP" ]; then
+        echo "IP ej tillgänglig i state — hämtar från Proxmox API (VMID=$VMID)..."
+        until [ -n "$CONTROL_IP" ]; do
+          CONTROL_IP=$(resolve_proxmox_ip "$VMID")
+          [ -z "$CONTROL_IP" ] && sleep 5
+        done
+      fi
+      echo "Ansible control IP: $CONTROL_IP"
+
       ROOT_SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
       SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
 
@@ -287,7 +319,37 @@ resource "terraform_data" "write_inventory" {
 
   provisioner "local-exec" {
     command = <<-EOT
+      resolve_proxmox_ip() {
+        local vmid=$1 endpoint="${PROXMOX_VE_ENDPOINT%/}"
+        if [ -n "${PROXMOX_VE_API_TOKEN:-}" ]; then
+          AUTH="-H \"Authorization: PVEAPIToken=$PROXMOX_VE_API_TOKEN\""
+        else
+          local ticket
+          ticket=$(curl -fsSk -X POST "$endpoint/api2/json/access/ticket" \
+            -d "username=$PROXMOX_VE_USERNAME&password=$PROXMOX_VE_PASSWORD" | \
+            python3 -c "import sys,json; print(json.load(sys.stdin)['data']['ticket'])" 2>/dev/null)
+          AUTH="-b \"PVEAuthCookie=$ticket\""
+        fi
+        eval curl -fsSk $AUTH "$endpoint/api2/json/nodes/pve/lxc/$vmid/interfaces" 2>/dev/null | \
+          python3 -c "
+import sys,json
+try:
+    d=json.load(sys.stdin).get('data',[])
+    print(next((i['inet'].split('/')[0] for i in d if i.get('name')=='eth0' and 'inet' in i),''))
+except: print('')
+" 2>/dev/null
+      }
+
+      VMID="${proxmox_virtual_environment_container.ansible.vm_id}"
       CONTROL_IP="${local.control_ip}"
+      if [ -z "$CONTROL_IP" ]; then
+        echo "IP ej tillgänglig i state — hämtar från Proxmox API (VMID=$VMID)..."
+        until [ -n "$CONTROL_IP" ]; do
+          CONTROL_IP=$(resolve_proxmox_ip "$VMID")
+          [ -z "$CONTROL_IP" ] && sleep 5
+        done
+      fi
+
       CONTROL_SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
 
       echo "Skriver inventory på ansible control node..."
