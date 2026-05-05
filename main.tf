@@ -115,8 +115,8 @@ resource "terraform_data" "bootstrap_control" {
     command = <<-EOT
       # Proxmox populerar ipv4-kartan asynkront — falla tillbaka på API-polling vid race condition
       resolve_proxmox_ip() {
-        local vmid=$1 endpoint=$PROXMOX_VE_ENDPOINT"
-        if [ -n "${PROXMOX_VE_API_TOKEN:-}" ]; then
+        local vmid=$1 endpoint=${PROXMOX_VE_ENDPOINT}"
+        if [ -n "${PROXMOX_VE_API_TOKEN}" ]; then
           AUTH="-H \"Authorization: PVEAPIToken=$PROXMOX_VE_API_TOKEN\""
         else
           local ticket
