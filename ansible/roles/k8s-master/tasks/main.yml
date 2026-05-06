@@ -52,14 +52,14 @@
 
 - name: Starta och akrivera Docker
   systemd:
-    name: dokcer
+    name: docker
     enabled: true
     state: present
 
-- name: Installera pip och Phyton kubernetes package
+- name: Installera pip och Python kubernetes package
   apt:
     name:
-      - phyton3-pip
-      - phyton3-kubernetes
+      - python3-pip
+      - python3-kubernetes
     state: present
     update_cache: false
