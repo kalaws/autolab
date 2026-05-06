@@ -1,3 +1,4 @@
+---
 - name: Kontrollera om klustret redan är initierat
   stat:
     path: /etc/kubernetes/admin.conf
@@ -15,7 +16,7 @@
   file:
     path: /home/ansible/.kube
     state: directory
-    mode: '0755'
+    mode: '0700'
     owner: ansible
     group: ansible
 
@@ -40,3 +41,25 @@
 - name: Spara join-kommando som fact
   set_fact:
     join_command: "{{ join_command.stdout }}"
+
+- name: Installera Docker CE
+  apt:
+    name: 
+      - docker-ce
+      - docker-ce-cil
+    state: present
+    update_cache: false
+
+- name: Starta och akrivera Docker
+  systemd:
+    name: dokcer
+    enabled: true
+    state: present
+
+- name: Installera pip och Phyton kubernetes package
+  apt:
+    name:
+      - phyton3-pip
+      - phyton3-kubernetes
+    state: present
+    update_cache: false
