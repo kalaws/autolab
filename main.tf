@@ -267,7 +267,7 @@ module "k8s_worker" {
 }
 
 # ============================================
-# 5. Skapa admin-användare på k8s-noder
+# 5. Skapa admin-användare på k8s-noder och kör reboot efter cloud-init
 # ============================================
 resource "terraform_data" "create_admin_k8s" {
   depends_on = [
@@ -285,6 +285,7 @@ resource "terraform_data" "create_admin_k8s" {
         local ip=$1
         echo "Väntar på SSH till $ip..."
         until ssh $SSH_OPTS ${var.ansible_user}@$ip true 2>/dev/null; do sleep 5; done
+
         echo "Skapar admin-användare på $ip..."
         ssh $SSH_OPTS ${var.ansible_user}@$ip "
           sudo useradd -m -s /bin/bash admin 2>/dev/null || true
@@ -296,7 +297,14 @@ resource "terraform_data" "create_admin_k8s" {
           sudo chmod 600 /home/admin/.ssh/authorized_keys
           sudo chown -R admin:admin /home/admin/.ssh
         "
+      
+        echo "Startar om $ip för att fullfölja cloud-init..."
+        ssh $SSH_OPTS ${var.ansible_user}@$ip "sudo reboot" || true
+        sleep 15
+        until ssh $SSH_OPTS ${var.ansible_user}@$ip true 2>/dev/null; do sleep 5; done
+        echo "$ip är tillbaka"
       }
+
 
       create_admin "${module.k8s_control.ipv4_address}"
       %{~ for name, vm in module.k8s_worker }
