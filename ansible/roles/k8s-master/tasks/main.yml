@@ -50,11 +50,11 @@
     state: present
     update_cache: false
 
-- name: Starta och akrivera Docker
+- name: Starta och aktivera Docker
   systemd:
     name: docker
     enabled: true
-    state: present
+    state: started
 
 - name: Installera pip och Python kubernetes package
   apt:
