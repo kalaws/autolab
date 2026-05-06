@@ -209,7 +209,109 @@ except: print('')
 }
 
 # ============================================
-# 3. Klona Kubernetes control node VM
+# 4. Bootstrappa HashiCorp Vault
+# ============================================
+resource "terraform_data" "bootstrap_vault" {
+  depends_on = [
+    module.vault,
+    terraform_data.bootstrap_control,
+  ]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      VAULT_IP="${module.vault.ipv4_address}"
+      SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
+
+      echo "Väntar på SSH till vault ($VAULT_IP)..."
+      until ssh $SSH_OPTS root@$VAULT_IP true 2>/dev/null; do sleep 5; done
+
+      echo "Installerar HashiCorp Vault..."
+      ssh $SSH_OPTS root@$VAULT_IP "
+        set -e
+        apt-get update -qq
+        apt-get install -y gpg curl
+        curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+        echo 'deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com \$(lsb_release -cs) main' | tee /etc/apt/sources.list.d/hashicorp.list
+        apt-get update -qq
+        apt-get install -y vault
+        mkdir -p /opt/vault/data
+        chown vault:vault /opt/vault/data
+      "
+
+      echo "Konfigurerar Vault..."
+      printf '%s\n' \
+        'ui = true' \
+        '' \
+        'storage "raft" {' \
+        '  path    = "/opt/vault/data"' \
+        '  node_id = "vault-1"' \
+        '}' \
+        '' \
+        'listener "tcp" {' \
+        '  address     = "0.0.0.0:8200"' \
+        '  tls_disable = true' \
+        '}' \
+        '' \
+        'api_addr     = "http://${module.vault.ipv4_address}:8200"' \
+        'cluster_addr = "http://${module.vault.ipv4_address}:8201"' \
+        | ssh $SSH_OPTS root@$VAULT_IP 'tee /etc/vault.d/vault.hcl > /dev/null'
+
+      ssh $SSH_OPTS root@$VAULT_IP "systemctl enable vault && systemctl restart vault"
+
+      echo "Väntar på Vault API..."
+      until ssh $SSH_OPTS root@$VAULT_IP \
+        'VAULT_ADDR=http://127.0.0.1:8200 vault status 2>&1 | grep -q "Seal Type"' 2>/dev/null; do
+        sleep 3
+      done
+
+      echo "Initierar Vault..."
+      INIT_OUTPUT=$(ssh $SSH_OPTS root@$VAULT_IP \
+        'VAULT_ADDR=http://127.0.0.1:8200 vault operator init -key-shares=1 -key-threshold=1 -format=json')
+      echo "$INIT_OUTPUT" > ${path.module}/.vault-init.json
+      chmod 600 ${path.module}/.vault-init.json
+
+      UNSEAL_KEY=$(echo "$INIT_OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['unseal_keys_b64'][0])")
+      ROOT_TOKEN=$(echo "$INIT_OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['root_token'])")
+
+      echo "Förseglar Vault..."
+      ssh $SSH_OPTS root@$VAULT_IP "VAULT_ADDR=http://127.0.0.1:8200 vault operator unseal $UNSEAL_KEY"
+
+      echo "Aktiverar KV secrets engine och skapar ansible-policy..."
+      ssh $SSH_OPTS root@$VAULT_IP "
+        set -e
+        export VAULT_ADDR=http://127.0.0.1:8200
+        export VAULT_TOKEN=$ROOT_TOKEN
+        vault secrets enable -path=secret kv-v2
+        printf '%s\n' \
+          'path \"secret/data/*\" {' \
+          '  capabilities = [\"read\", \"list\"]' \
+          '}' > /tmp/ansible-policy.hcl
+        vault policy write ansible-read /tmp/ansible-policy.hcl
+        rm /tmp/ansible-policy.hcl
+      "
+
+      echo "Skapar Ansible-token..."
+      ANSIBLE_TOKEN=$(ssh $SSH_OPTS root@$VAULT_IP \
+        "export VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN=$ROOT_TOKEN && vault token create -policy=ansible-read -format=json" | \
+        python3 -c "import sys,json; print(json.load(sys.stdin)['auth']['client_token'])")
+
+      echo "Skriver Vault-konfiguration till ansible-noden..."
+      CONTROL_IP="${local.control_ip}"
+      CONTROL_SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
+      ssh $CONTROL_SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
+        printf '%s\n' '$ANSIBLE_TOKEN' | sudo tee /home/ansible/.vault-token > /dev/null
+        sudo chmod 600 /home/ansible/.vault-token
+        sudo chown ansible:ansible /home/ansible/.vault-token
+        sudo bash -c 'printf \"export VAULT_ADDR=http://${module.vault.ipv4_address}:8200\nexport VAULT_TOKEN_FILE=/home/ansible/.vault-token\n\" >> /home/ansible/.bashrc'
+      "
+
+      echo "Vault bootstrappad — init-data sparad i .vault-init.json (KÄNSLIG FIL)"
+    EOT
+  }
+}
+
+# ============================================
+# 5. Klona Kubernetes control node VM
 # ============================================
 module "k8s_control" {
   source = "./modules/virtual-machine"
@@ -226,7 +328,7 @@ module "k8s_control" {
 }
 
 # ============================================
-# 4. Klona Kubernetes worker nodes VM
+# 6. Klona Kubernetes worker nodes VM
 # ============================================
 module "k8s_worker" {
   source   = "./modules/virtual-machine"
@@ -244,7 +346,7 @@ module "k8s_worker" {
 }
 
 # ============================================
-# 5. Skapa admin-användare på k8s-noder och kör reboot efter cloud-init
+# 7. Skapa admin-användare på k8s-noder och kör reboot efter cloud-init
 # ============================================
 resource "terraform_data" "create_admin_k8s" {
   depends_on = [
@@ -292,13 +394,14 @@ resource "terraform_data" "create_admin_k8s" {
 }
 
 # ============================================
-# 6. Skriv Ansible inventory
+# 8. Skriv Ansible inventory
 # ============================================
 resource "terraform_data" "write_inventory" {
   depends_on = [
     module.k8s_control,
     module.k8s_worker,
     terraform_data.bootstrap_control,
+    terraform_data.bootstrap_vault,
     terraform_data.create_admin_k8s,
   ]
 
