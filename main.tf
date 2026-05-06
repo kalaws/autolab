@@ -188,7 +188,6 @@ except: print('')
       echo "Installerar Ansible på ansible control node..."
       ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
         'sudo apt-get update -qq && \
-         sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ansible git && \
          ansible --version'
 
