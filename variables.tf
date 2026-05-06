@@ -10,18 +10,13 @@ variable "ct_template" {
   default     = "local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
 }
 
-variable "resources" {   
-  description = "VM/CT configurations for Kubernetes lab"   
-  default = {     
-    ansible  = { hostname = "LABITS-ansible", cores = 1, memory = 512, disk = 8 }
-    k8s_control  = { hostname = "LABITS-K8S-master", cores = 2, memory = 4096,  disk = 20 }          
-    k8s_worker  = { hostname = "LABITS-K8S-worker", cores = 2, memory = 4096, disk = 40 }
-  } 
-  type = map(object({  
-    hostname = string   
-    cores    = number    
-    memory   = number    
-    disk     = number  
+variable "resources" {
+  description = "VM/CT configurations for Kubernetes lab"
+  type = map(object({
+    hostname = string
+    cores    = number
+    memory   = number
+    disk     = number
   }))
 }
 
