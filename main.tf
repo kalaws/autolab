@@ -40,63 +40,24 @@ resource "local_sensitive_file" "ansible_ssh_private" {
 }
 
 # ============================================
-# 1. Klona Ansible control node CT
+# 1. Ansible control node CT
 # ============================================
-resource "proxmox_virtual_environment_container" "ansible" {
-  description = "Ansible control node (CT)"
-  node_name   = "pve"
-  unprivileged = true
+module "ansible" {
+  source = "./modules/container"
 
-  features {
-    nesting = true
-  }
-
-  initialization {
-    hostname = var.resources["ansible"].hostname
-
-    dns {
-      servers = var.dns_servers
-    }
-
-    ip_config {
-      ipv4 {
-        address = "dhcp"
-      }
-    }
-
-    user_account {
-      keys = [trimspace(tls_private_key.terraform_ssh.public_key_openssh), trimspace(file(pathexpand(var.ssh_public_key_path)))]
-    }
-  }
-
-  memory {
-    dedicated = var.resources["ansible"].memory
-  }
-
-  cpu {
-    cores = var.resources["ansible"].cores
-  }
-  
-  disk {
-    datastore_id = "local-lvm"     
-    size         = var.resources["ansible"].disk  
-  }
-
-  network_interface {
-    name   = "eth0"
-    bridge = var.bridge_wan
-  }
-
-  operating_system {
-    template_file_id = var.ct_template
-    type             = "ubuntu"
-  }
-
-  started = true
+  ct_name     = var.resources["ansible"].hostname
+  ct_template = var.ct_template
+  memory      = var.resources["ansible"].memory
+  cpu_cores   = var.resources["ansible"].cores
+  disk        = var.resources["ansible"].disk
+  bridge_wan  = var.bridge_wan
+  dns_servers = var.dns_servers
+  ssh_keys    = [trimspace(tls_private_key.terraform_ssh.public_key_openssh), trimspace(file(pathexpand(var.ssh_public_key_path)))]
+  nesting     = true
 }
 
 locals {
-  control_ip = try(proxmox_virtual_environment_container.ansible.ipv4["eth0"], "")
+  control_ip = try(module.ansible.ipv4_address, "")
   target_ips = merge(
     { "control" = module.k8s_control.ipv4_address },
     { for name, vm in module.k8s_worker : name => vm.ipv4_address }
@@ -104,11 +65,11 @@ locals {
 }
 
 # ============================================
-# 2. Bootstrappa Ansible control node
+# 3. Bootstrappa Ansible control node
 # ============================================
 resource "terraform_data" "bootstrap_control" {
   depends_on = [
-    proxmox_virtual_environment_container.ansible,
+    module.ansible,
   ]
 
   provisioner "local-exec" {
@@ -135,7 +96,7 @@ except: print('')
 " 2>/dev/null
       }
 
-      VMID="${proxmox_virtual_environment_container.ansible.vm_id}"
+      VMID="${module.ansible.vm_id}"
       CONTROL_IP="${local.control_ip}"
       if [ -z "$CONTROL_IP" ]; then
         echo "IP ej tillgänglig i state — hämtar från Proxmox API (VMID=$VMID)..."
@@ -348,7 +309,7 @@ except: print('')
 " 2>/dev/null
       }
 
-      VMID="${proxmox_virtual_environment_container.ansible.vm_id}"
+      VMID="${module.ansible.vm_id}"
       CONTROL_IP="${local.control_ip}"
       if [ -z "$CONTROL_IP" ]; then
         echo "IP ej tillgänglig i state — hämtar från Proxmox API (VMID=$VMID)..."
