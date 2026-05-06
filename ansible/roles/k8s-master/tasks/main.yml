@@ -46,7 +46,7 @@
   apt:
     name: 
       - docker-ce
-      - docker-ce-cil
+      - docker-ce-cli
     state: present
     update_cache: false
 
