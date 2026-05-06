@@ -1,4 +1,13 @@
 ---
+- name: Avaktivera swap
+  command: swapoff -a
+
+- name: Ta bort swap från fstab
+  replace:
+    path: /etc/fstab
+    regexp: '^([^#].*\sswap\s.*)$'
+    replace: '# \1'
+
 - name: Installera beroenden
   apt:
     name:
@@ -92,3 +101,12 @@
     regexp: 'SystemdCgroup = false'
     replace: 'SystemdCgroup = true'
 
+- name: Lägg till Docker apt-nyckel
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Lägg till Docker apt repo
+  apt_repository:
+    repo: "deb https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    state: present
