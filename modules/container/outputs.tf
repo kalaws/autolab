@@ -1,5 +1,5 @@
 output "ipv4_address" {
-  value       = proxmox_virtual_environment_container.ct.ipv4["eth0"]
+  value       = try(proxmox_virtual_environment_container.ct.ipv4["eth0"], "not available yet")
   description = "CT:ns IPv4-adress (eth0)"
 }
 
