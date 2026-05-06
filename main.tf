@@ -73,7 +73,8 @@ module "vault" {
 }
 
 locals {
-  control_ip = try(module.ansible.ipv4_address, "")
+  control_ip = module.ansible.ipv4_address == "not available yet" ? "" : module.ansible.ipv4_address
+  vault_ip   = module.vault.ipv4_address == "not available yet" ? "" : module.vault.ipv4_address
   target_ips = merge(
     { "control" = module.k8s_control.ipv4_address },
     { for name, vm in module.k8s_worker : name => vm.ipv4_address }
@@ -218,7 +219,39 @@ resource "terraform_data" "bootstrap_vault" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      VAULT_IP="${module.vault.ipv4_address}"
+      # Proxmox populerar ipv4-kartan asynkront — falla tillbaka på API-polling vid race condition
+      resolve_proxmox_ip() {
+        local vmid=$1 endpoint=$PROXMOX_VE_ENDPOINT
+        if [ -n "$PROXMOX_VE_API_TOKEN" ]; then
+          AUTH="-H \"Authorization: PVEAPIToken=$PROXMOX_VE_API_TOKEN\""
+        else
+          local ticket
+          ticket=$(curl -fsSk -X POST "$endpoint/api2/json/access/ticket" \
+            -d "username=$PROXMOX_VE_USERNAME&password=$PROXMOX_VE_PASSWORD" | \
+            python3 -c "import sys,json; print(json.load(sys.stdin)['data']['ticket'])" 2>/dev/null)
+          AUTH="-b \"PVEAuthCookie=$ticket\""
+        fi
+        eval curl -fsSk $AUTH "$endpoint/api2/json/nodes/pve/lxc/$vmid/interfaces" 2>/dev/null | \
+          python3 -c "
+import sys,json
+try:
+    d=json.load(sys.stdin).get('data',[])
+    print(next((i['inet'].split('/')[0] for i in d if i.get('name')=='eth0' and 'inet' in i),''))
+except: print('')
+" 2>/dev/null
+      }
+
+      VMID="${module.vault.vm_id}"
+      VAULT_IP="${local.vault_ip}"
+      if [ -z "$VAULT_IP" ]; then
+        echo "Vault-IP ej tillgänglig i state — hämtar från Proxmox API (VMID=$VMID)..."
+        until [ -n "$VAULT_IP" ]; do
+          VAULT_IP=$(resolve_proxmox_ip "$VMID")
+          [ -z "$VAULT_IP" ] && sleep 5
+        done
+      fi
+      echo "Vault IP: $VAULT_IP"
+
       SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
 
       echo "Väntar på SSH till vault ($VAULT_IP)..."
@@ -251,8 +284,8 @@ resource "terraform_data" "bootstrap_vault" {
         '  tls_disable = true' \
         '}' \
         '' \
-        'api_addr     = "http://${module.vault.ipv4_address}:8200"' \
-        'cluster_addr = "http://${module.vault.ipv4_address}:8201"' \
+        "api_addr     = \"http://$VAULT_IP:8200\"" \
+        "cluster_addr = \"http://$VAULT_IP:8201\"" \
         | ssh $SSH_OPTS root@$VAULT_IP 'tee /etc/vault.d/vault.hcl > /dev/null'
 
       ssh $SSH_OPTS root@$VAULT_IP "systemctl enable vault && systemctl restart vault"
@@ -301,7 +334,7 @@ resource "terraform_data" "bootstrap_vault" {
         printf '%s\n' '$ANSIBLE_TOKEN' | sudo tee /home/ansible/.vault-token > /dev/null
         sudo chmod 600 /home/ansible/.vault-token
         sudo chown ansible:ansible /home/ansible/.vault-token
-        sudo bash -c 'printf \"export VAULT_ADDR=http://${module.vault.ipv4_address}:8200\nexport VAULT_TOKEN_FILE=/home/ansible/.vault-token\n\" >> /home/ansible/.bashrc'
+        sudo bash -c \"printf 'export VAULT_ADDR=http://$VAULT_IP:8200\nexport VAULT_TOKEN_FILE=/home/ansible/.vault-token\n' >> /home/ansible/.bashrc\"
       "
 
       echo "Vault bootstrappad — init-data sparad i .vault-init.json (KÄNSLIG FIL)"
