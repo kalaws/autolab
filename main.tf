@@ -56,6 +56,22 @@ module "ansible" {
   nesting     = true
 }
 
+# ============================================
+# 2. HashiCorp Vault CT
+# ============================================
+module "vault" {
+  source = "./modules/container"
+
+  ct_name     = var.resources["vault"].hostname
+  ct_template = var.ct_template
+  memory      = var.resources["vault"].memory
+  cpu_cores   = var.resources["vault"].cores
+  disk        = var.resources["vault"].disk
+  bridge_wan  = var.bridge_wan
+  dns_servers = var.dns_servers
+  ssh_keys    = [trimspace(tls_private_key.terraform_ssh.public_key_openssh), trimspace(file(pathexpand(var.ssh_public_key_path)))]
+}
+
 locals {
   control_ip = try(module.ansible.ipv4_address, "")
   target_ips = merge(
