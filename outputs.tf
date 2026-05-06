@@ -4,7 +4,11 @@ output "ansible_ssh_pubkey" {
 }
 
 output "ansible" {
-  value = try(proxmox_virtual_environment_container.ansible.ipv4["eth0"], "not available yet")
+  value = try(module.ansible.ipv4_address, "not available yet")
+}
+
+output "vault" {
+  value = try(module.vault.ipv4_address, "not available yet")
 }
 
 output "k8s_control" {
