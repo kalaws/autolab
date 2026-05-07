@@ -186,6 +186,13 @@ except: print('')
         sudo chown -R admin:admin /home/admin/.ssh
       "
 
+      echo "Installerar system-wide SSH-config för lab..."
+      ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
+        sudo mkdir -p /etc/ssh/ssh_config.d
+        printf '%s\n' 'Host 10.*' '  StrictHostKeyChecking no' '  UserKnownHostsFile /dev/null' | \
+          sudo tee /etc/ssh/ssh_config.d/lab.conf > /dev/null
+      "
+
       echo "Installerar Ansible på ansible control node..."
       ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
         'sudo apt-get update -qq && \
