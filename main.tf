@@ -264,6 +264,28 @@ except: print('')
       echo "Väntar på SSH till vault ($VAULT_IP)..."
       until ssh $SSH_OPTS root@$VAULT_IP true 2>/dev/null; do sleep 5; done
 
+      echo "Skapar användare på vault..."
+      ssh $SSH_OPTS root@$VAULT_IP "
+        set -e
+        useradd -m -s /bin/bash terraform 2>/dev/null || true
+        printf 'terraform ALL=(ALL) NOPASSWD:ALL\n' | tee /etc/sudoers.d/terraform > /dev/null
+        chmod 440 /etc/sudoers.d/terraform
+        mkdir -p /home/terraform/.ssh
+        printf '%s\n' '${trimspace(tls_private_key.terraform_ssh.public_key_openssh)}' | tee /home/terraform/.ssh/authorized_keys > /dev/null
+        chmod 700 /home/terraform/.ssh
+        chmod 600 /home/terraform/.ssh/authorized_keys
+        chown -R terraform:terraform /home/terraform/.ssh
+
+        useradd -m -s /bin/bash admin 2>/dev/null || true
+        printf 'admin ALL=(ALL) NOPASSWD:ALL\n' | tee /etc/sudoers.d/admin > /dev/null
+        chmod 440 /etc/sudoers.d/admin
+        mkdir -p /home/admin/.ssh
+        printf '%s\n' '${trimspace(file(pathexpand(var.ssh_public_key_path)))}' | tee /home/admin/.ssh/authorized_keys > /dev/null
+        chmod 700 /home/admin/.ssh
+        chmod 600 /home/admin/.ssh/authorized_keys
+        chown -R admin:admin /home/admin/.ssh
+      "
+
       echo "Installerar HashiCorp Vault..."
       ssh $SSH_OPTS root@$VAULT_IP "
         set -e
