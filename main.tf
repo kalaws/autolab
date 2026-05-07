@@ -124,8 +124,8 @@ except: print('')
       fi
       echo "Ansible control IP: $CONTROL_IP"
 
-      ROOT_SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
-      SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
+      ROOT_SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
+      SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
 
       echo "Väntar på SSH till ansible control ($CONTROL_IP)..."
       until ssh $ROOT_SSH_OPTS root@$CONTROL_IP true 2>/dev/null; do sleep 5; done
@@ -259,7 +259,7 @@ except: print('')
       fi
       echo "Vault IP: $VAULT_IP"
 
-      SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
+      SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
 
       echo "Väntar på SSH till vault ($VAULT_IP)..."
       until ssh $SSH_OPTS root@$VAULT_IP true 2>/dev/null; do sleep 5; done
@@ -359,7 +359,7 @@ except: print('')
 
       echo "Skriver Vault-konfiguration till ansible-noden..."
       CONTROL_IP="${local.control_ip}"
-      CONTROL_SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
+      CONTROL_SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
       ssh $CONTROL_SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
         printf '%s\n' '$ANSIBLE_TOKEN' | sudo tee /home/ansible/.vault-token > /dev/null
         sudo chmod 600 /home/ansible/.vault-token
@@ -418,7 +418,7 @@ resource "terraform_data" "create_admin_k8s" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.ansible_ssh_private.filename}"
+      SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.ansible_ssh_private.filename}"
       OPERATOR_KEY="${trimspace(file(pathexpand(var.ssh_public_key_path)))}"
       ANSIBLE_KEY="${trimspace(tls_private_key.ansible_ssh.public_key_openssh)}"
 
@@ -500,7 +500,7 @@ except: print('')
         done
       fi
 
-      CONTROL_SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
+      CONTROL_SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
 
       echo "Skriver inventory på ansible control node..."
       ssh $CONTROL_SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
