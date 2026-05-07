@@ -273,6 +273,7 @@ except: print('')
       echo "Konfigurerar Vault..."
       printf '%s\n' \
         'ui = true' \
+        'disable_mlock = true' \
         '' \
         'storage "raft" {' \
         '  path    = "/opt/vault/data"' \
@@ -288,7 +289,7 @@ except: print('')
         "cluster_addr = \"http://$VAULT_IP:8201\"" \
         | ssh $SSH_OPTS root@$VAULT_IP 'tee /etc/vault.d/vault.hcl > /dev/null'
 
-      ssh $SSH_OPTS root@$VAULT_IP "systemctl enable vault && systemctl restart vault"
+      ssh $SSH_OPTS root@$VAULT_IP "systemctl enable vault && systemctl restart vault || { journalctl -u vault --no-pager -n 30; exit 1; }"
 
       echo "Väntar på Vault API..."
       until ssh $SSH_OPTS root@$VAULT_IP \
