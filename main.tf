@@ -70,6 +70,7 @@ module "vault" {
   bridge_wan  = var.bridge_wan
   dns_servers = var.dns_servers
   ssh_keys    = [trimspace(tls_private_key.terraform_ssh.public_key_openssh), trimspace(file(pathexpand(var.ssh_public_key_path)))]
+  nesting     = true
 }
 
 locals {
