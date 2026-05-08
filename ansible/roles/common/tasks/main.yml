@@ -1,0 +1,28 @@
+---
+- name: Skapa admin-användare
+  user:
+    name: admin
+    shell: /bin/bash
+    create_home: true
+
+- name: Sätt sudoers för admin
+  copy:
+    content: "admin ALL=(ALL) NOPASSWD:ALL\n"
+    dest: /etc/sudoers.d/admin
+    mode: '0440'
+    validate: visudo -cf %s
+
+- name: Skapa .ssh för admin
+  file:
+    path: /home/admin/.ssh
+    state: directory
+    owner: admin
+    group: admin
+    mode: '0700'
+
+- name: Lägg till operatörens publika nyckel
+  authorized_key:
+    user: admin
+    key: "{{ admin_ssh_pubkey }}"
+    state: present
+  when: admin_ssh_pubkey | length > 0
