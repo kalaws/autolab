@@ -265,110 +265,60 @@ except: print('')
       echo "Väntar på SSH till vault ($VAULT_IP)..."
       until ssh $SSH_OPTS root@$VAULT_IP true 2>/dev/null; do sleep 5; done
 
+      CONTROL_IP="${local.control_ip}"
+
       echo "Skapar användare på vault..."
       ssh $SSH_OPTS root@$VAULT_IP "
         set -e
-        useradd -m -s /bin/bash terraform 2>/dev/null || true
-        printf 'terraform ALL=(ALL) NOPASSWD:ALL\n' | tee /etc/sudoers.d/terraform > /dev/null
-        chmod 440 /etc/sudoers.d/terraform
-        mkdir -p /home/terraform/.ssh
-        printf '%s\n' '${trimspace(tls_private_key.terraform_ssh.public_key_openssh)}' | tee /home/terraform/.ssh/authorized_keys > /dev/null
-        chmod 700 /home/terraform/.ssh
-        chmod 600 /home/terraform/.ssh/authorized_keys
-        chown -R terraform:terraform /home/terraform/.ssh
-
-        useradd -m -s /bin/bash admin 2>/dev/null || true
-        printf 'admin ALL=(ALL) NOPASSWD:ALL\n' | tee /etc/sudoers.d/admin > /dev/null
-        chmod 440 /etc/sudoers.d/admin
-        mkdir -p /home/admin/.ssh
-        printf '%s\n' '${trimspace(file(pathexpand(var.ssh_public_key_path)))}' | tee /home/admin/.ssh/authorized_keys > /dev/null
-        chmod 700 /home/admin/.ssh
-        chmod 600 /home/admin/.ssh/authorized_keys
-        chown -R admin:admin /home/admin/.ssh
+        for user in terraform admin ansible; do
+          useradd -m -s /bin/bash \$user 2>/dev/null || true
+          printf '%s ALL=(ALL) NOPASSWD:ALL\n' \$user | tee /etc/sudoers.d/\$user > /dev/null
+          chmod 440 /etc/sudoers.d/\$user
+          mkdir -p /home/\$user/.ssh
+          chmod 700 /home/\$user/.ssh
+        done
+        printf '%s\n' '${trimspace(tls_private_key.terraform_ssh.public_key_openssh)}' \
+          | tee /home/terraform/.ssh/authorized_keys > /dev/null
+        printf '%s\n' '${trimspace(file(pathexpand(var.ssh_public_key_path)))}' \
+          | tee /home/admin/.ssh/authorized_keys > /dev/null
+        printf '%s\n' '${trimspace(tls_private_key.ansible_ssh.public_key_openssh)}' \
+          | tee /home/ansible/.ssh/authorized_keys > /dev/null
+        for user in terraform admin ansible; do
+          chmod 600 /home/\$user/.ssh/authorized_keys
+          chown -R \$user:\$user /home/\$user/.ssh
+        done
       "
 
-      echo "Installerar HashiCorp Vault..."
-      ssh $SSH_OPTS root@$VAULT_IP "
-        set -e
-        apt-get update -qq
-        apt-get install -y gpg curl
-        curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
-        echo \"deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com \$(lsb_release -cs) main\" | tee /etc/apt/sources.list.d/hashicorp.list
-        apt-get update -qq
-        apt-get install -y vault
-        mkdir -p /opt/vault/data
-        chown vault:vault /opt/vault/data
+      echo "Kopierar secrets.yml till ansible-noden..."
+      scp $SSH_OPTS ${path.module}/secrets.yml \
+        ${var.terraform_ssh_user}@$CONTROL_IP:/tmp/vault_secrets.yml
+      ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
+        sudo mv /tmp/vault_secrets.yml /opt/${var.github_repo}/ansible/group_vars/all/secrets.yml
+        sudo chown ansible:ansible /opt/${var.github_repo}/ansible/group_vars/all/secrets.yml
+        sudo chmod 600 /opt/${var.github_repo}/ansible/group_vars/all/secrets.yml
       "
 
-      echo "Konfigurerar Vault..."
-      printf '%s\n' \
-        'ui = true' \
-        'disable_mlock = true' \
-        '' \
-        'storage "raft" {' \
-        '  path    = "/opt/vault/data"' \
-        '  node_id = "vault-1"' \
-        '}' \
-        '' \
-        'listener "tcp" {' \
-        '  address     = "0.0.0.0:8200"' \
-        '  tls_disable = true' \
-        '}' \
-        '' \
-        "api_addr     = \"http://$VAULT_IP:8200\"" \
-        "cluster_addr = \"http://$VAULT_IP:8201\"" \
-        | ssh $SSH_OPTS root@$VAULT_IP 'tee /etc/vault.d/vault.hcl > /dev/null'
+      echo "Installerar Ansible-collections..."
+      ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
+        "sudo -u ansible ansible-galaxy collection install \
+          -r /opt/${var.github_repo}/ansible/requirements.yml"
 
-      ssh $SSH_OPTS root@$VAULT_IP "systemctl enable vault && systemctl restart vault || { journalctl -u vault --no-pager -n 30; exit 1; }"
-
-      echo "Väntar på Vault API..."
-      until ssh $SSH_OPTS root@$VAULT_IP \
-        'VAULT_ADDR=http://127.0.0.1:8200 vault status 2>&1 | grep -q "Seal Type"' 2>/dev/null; do
-        sleep 3
-      done
-
-      echo "Initierar Vault..."
-      INIT_OUTPUT=$(ssh $SSH_OPTS root@$VAULT_IP \
-        'VAULT_ADDR=http://127.0.0.1:8200 vault operator init -key-shares=1 -key-threshold=1 -format=json')
-      echo "$INIT_OUTPUT" > ${path.module}/.vault-init.json
-      chmod 600 ${path.module}/.vault-init.json
-
-      UNSEAL_KEY=$(echo "$INIT_OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['unseal_keys_b64'][0])")
-      ROOT_TOKEN=$(echo "$INIT_OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['root_token'])")
-
-      echo "Förseglar Vault..."
-      ssh $SSH_OPTS root@$VAULT_IP "VAULT_ADDR=http://127.0.0.1:8200 vault operator unseal $UNSEAL_KEY"
-
-      echo "Aktiverar KV secrets engine och skapar ansible-policy..."
-      ssh $SSH_OPTS root@$VAULT_IP "
-        set -e
-        export VAULT_ADDR=http://127.0.0.1:8200
-        export VAULT_TOKEN=$ROOT_TOKEN
-        vault secrets enable -path=secret kv-v2
-        printf '%s\n' \
-          'path \"secret/data/*\" {' \
-          '  capabilities = [\"read\", \"list\"]' \
-          '}' > /tmp/ansible-policy.hcl
-        vault policy write ansible-read /tmp/ansible-policy.hcl
-        rm /tmp/ansible-policy.hcl
+      echo "Bootstrappar Vault via Ansible..."
+      ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
+        sudo -u ansible bash -c 'printf \"[vault]\n$VAULT_IP ansible_user=ansible ansible_ssh_private_key_file=~/.ssh/ansible_ed25519\n\" \
+          > /tmp/vault_inventory.ini'
+        sudo -u ansible ansible-playbook \
+          -i /tmp/vault_inventory.ini \
+          --limit vault \
+          /opt/${var.github_repo}/ansible/site.yml
+        rm -f /tmp/vault_inventory.ini
       "
 
-      echo "Skapar Ansible-token..."
-      ANSIBLE_TOKEN=$(ssh $SSH_OPTS root@$VAULT_IP \
-        "export VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN=$ROOT_TOKEN && vault token create -policy=ansible-read -format=json" | \
-        python3 -c "import sys,json; print(json.load(sys.stdin)['auth']['client_token'])")
+      echo "Rensar secrets.yml från ansible-noden..."
+      ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
+        "sudo rm -f /opt/${var.github_repo}/ansible/group_vars/all/secrets.yml"
 
-      echo "Skriver Vault-konfiguration till ansible-noden..."
-      CONTROL_IP="${local.control_ip}"
-      CONTROL_SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
-      ssh $CONTROL_SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
-        printf '%s\n' '$ANSIBLE_TOKEN' | sudo tee /home/ansible/.vault-token > /dev/null
-        sudo chmod 600 /home/ansible/.vault-token
-        sudo chown ansible:ansible /home/ansible/.vault-token
-        sudo bash -c \"printf 'export VAULT_ADDR=http://$VAULT_IP:8200\nexport VAULT_TOKEN_FILE=/home/ansible/.vault-token\n' >> /home/ansible/.bashrc\"
-      "
-
-      echo "Vault bootstrappad — init-data sparad i .vault-init.json (KÄNSLIG FIL)"
+      echo "Vault bootstrappad."
     EOT
   }
 }
@@ -505,7 +455,7 @@ except: print('')
 
       echo "Skriver inventory på ansible control node..."
       ssh $CONTROL_SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
-        "sudo -u ansible bash -c 'mkdir -p /opt/${var.github_repo}/ansible && printf \"[control_plane]\n${module.k8s_control.ipv4_address} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519\n\n[workers]\n${join("\\n", [for name, vm in module.k8s_worker : "${vm.ipv4_address} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519"])}\n\" > /opt/${var.github_repo}/ansible/inventory.ini'"
+        "sudo -u ansible bash -c 'mkdir -p /opt/${var.github_repo}/ansible && printf \"[vault]\n${local.vault_ip} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519\n\n[control_plane]\n${module.k8s_control.ipv4_address} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519\n\n[workers]\n${join("\\n", [for name, vm in module.k8s_worker : "${vm.ipv4_address} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519"])}\n\" > /opt/${var.github_repo}/ansible/inventory.ini'"
 
     EOT
   }
