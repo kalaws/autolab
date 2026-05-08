@@ -1,0 +1,94 @@
+---
+- name: Kontrollera vault-status
+  command: vault status -format=json
+  environment:
+    VAULT_ADDR: "{{ vault_addr }}"
+  register: vault_status_raw
+  failed_when: vault_status_raw.rc not in [0, 2]
+  changed_when: false
+
+- name: Parse vault-status
+  set_fact:
+    vault_status: "{{ vault_status_raw.stdout | from_json }}"
+
+- name: Initialisera vault
+  command: vault operator init -key-shares=1 -key-threshold=1 -format=json
+  environment:
+    VAULT_ADDR: "{{ vault_addr }}"
+  register: vault_init_raw
+  when: not vault_status.initialized
+  no_log: true
+
+- name: Spara init output på vault host
+  copy:
+    content: "{{ vault_init_raw.stdout }}"
+    dest: "{{ vault_init_file }}"
+    owner: vault
+    group: vault
+    mode: '0600'
+  when: not vault_status.initialized
+  no_log: true
+
+- name: Sätt vault_init från fresh init
+  set_fact:
+    vault_init: "{{ vault_init_raw.stdout | from_json }}"
+  when: not vault_status.initialized
+  no_log: true
+
+- name: Ladda init-fil om redan initialiserat
+  slurp:
+    src: "{{ vault_init_file }}"
+  register: vault_init_file_content
+  when: vault_status.initialized
+
+- name: Sätt vault_init från existerande fil
+  set_fact:
+    vault_init: "{{ vault_init_file_content.content | b64decode | from_json }}"
+  when: vault_status.initialized
+  no_log: true
+
+- name: Unseal vault
+  command: "vault operator unseal {{ vault_init.unseal_keys_b64[0] }}"
+  environment:
+    VAULT_ADDR: "{{ vault_addr }}"
+  when: vault_status.sealed
+  no_log: true
+
+- name: Aktivera KV v2 secrets-engine
+  command: vault secrets enable -path=secret kv-v2
+  environment:
+    VAULT_ADDR: "{{ vault_addr }}"
+    VAULT_TOKEN: "{{ vault_init.root_token }}"
+  register: kv_enable
+  failed_when: kv_enable.rc != 0 and 'path is already in use' not in kv_enable.stderr
+  changed_when: kv_enable.rc == 0
+
+- name: Skriv ansible-read policy
+  command:
+    argv: [vault, policy, write, ansible-read, /dev/stdin]
+    stdin: |
+      path "secret/data/*" {
+        capabilities = ["read", "list"]
+      }
+  environment:
+    VAULT_ADDR: "{{ vault_addr }}"
+    VAULT_TOKEN: "{{ vault_init.root_token }}"
+  changed_when: false
+
+- name: Skapa ansible token
+  command: vault token create -policy=ansible-read -format=json
+  environment:
+    VAULT_ADDR: "{{ vault_addr }}"
+    VAULT_TOKEN: "{{ vault_init.root_token }}"
+  register: ansible_token_raw
+  changed_when: false
+  no_log: true
+
+- name: Skriv ansible token till control node
+  copy:
+    content: "{{ (ansible_token_raw.stdout | from_json).auth.client_token }}"
+    dest: "{{ ansible_token_file }}"
+    mode: '0600'
+  delegate_to: localhost
+  become: false
+  no_log: true
