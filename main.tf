@@ -312,7 +312,7 @@ except: print('')
           -i /tmp/vault_inventory.ini \
           --limit vault \
           /opt/${var.github_repo}/ansible/site.yml
-        rm -f /tmp/vault_inventory.ini
+        sudo rm -f /tmp/vault_inventory.ini
       "
 
       echo "Rensar secrets.yml från ansible-noden..."
