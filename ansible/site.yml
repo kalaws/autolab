@@ -1,4 +1,10 @@
 ---
+- name: Bootstrap HashiCorp Vault
+  hosts: vault
+  become: true
+  roles:
+    - vault
+
 - name: Common k8s prerequisites
   hosts: control_plane:workers
   become: true
