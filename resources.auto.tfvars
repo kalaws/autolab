@@ -8,7 +8,7 @@ resources = {
   vault = {
     hostname = "LABITS-vault"
     cores    = 1
-    memory   = 512
+    memory   = 256
     disk     = 8
   }
   k8s_control = {
