@@ -227,7 +227,7 @@ resource "terraform_data" "bootstrap_vault" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      # Proxmox populerar ipv4-kartan asynkront — falla tillbaka på API-polling vid race condition
+      # Proxmox populerar ipv4-kartan asynkront — fall tillbaka på API-polling vid race condition
       resolve_proxmox_ip() {
         local vmid=$1 endpoint=$PROXMOX_VE_ENDPOINT
         if [ -n "$PROXMOX_VE_API_TOKEN" ]; then
