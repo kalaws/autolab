@@ -212,6 +212,15 @@ except: print('')
         sudo git config --system --add safe.directory /opt/${var.github_repo}
         sudo -u ansible git -C /opt/${var.github_repo} config core.sharedRepository group
       "
+
+      echo "Skriver operatörens publika nyckel till group_vars..."
+      ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
+        sudo mkdir -p /opt/${var.github_repo}/ansible/group_vars/all
+        printf 'admin_ssh_pubkey: \"%s\"\n' '${trimspace(file(pathexpand(var.ssh_public_key_path)))}' | \
+          sudo tee /opt/${var.github_repo}/ansible/group_vars/all/operator.yml > /dev/null
+        sudo chown ansible:ansible /opt/${var.github_repo}/ansible/group_vars/all/operator.yml
+        sudo chmod 644 /opt/${var.github_repo}/ansible/group_vars/all/operator.yml
+      "
     EOT
   }
 }
@@ -267,10 +276,10 @@ except: print('')
 
       CONTROL_IP="${local.control_ip}"
 
-      echo "Skapar användare på vault..."
+      echo "Skapar bootstrap-användare på vault..."
       ssh $SSH_OPTS root@$VAULT_IP "
         set -e
-        for user in terraform admin ansible; do
+        for user in terraform ansible; do
           useradd -m -s /bin/bash \$user 2>/dev/null || true
           printf '%s ALL=(ALL) NOPASSWD:ALL\n' \$user | tee /etc/sudoers.d/\$user > /dev/null
           chmod 440 /etc/sudoers.d/\$user
@@ -279,11 +288,9 @@ except: print('')
         done
         printf '%s\n' '${trimspace(tls_private_key.terraform_ssh.public_key_openssh)}' \
           | tee /home/terraform/.ssh/authorized_keys > /dev/null
-        printf '%s\n' '${trimspace(file(pathexpand(var.ssh_public_key_path)))}' \
-          | tee /home/admin/.ssh/authorized_keys > /dev/null
         printf '%s\n' '${trimspace(tls_private_key.ansible_ssh.public_key_openssh)}' \
           | tee /home/ansible/.ssh/authorized_keys > /dev/null
-        for user in terraform admin ansible; do
+        for user in terraform ansible; do
           chmod 600 /home/\$user/.ssh/authorized_keys
           chown -R \$user:\$user /home/\$user/.ssh
         done
