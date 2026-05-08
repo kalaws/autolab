@@ -1,23 +1,59 @@
 ---
-- name: Install dependencies
+- name: Installera beroenden
   apt:
     name: [gpg, curl]
     state: present
     update_cache: true
 
-- name: Add HashiCorp GPG key
+- name: Lägg till HashiCorp GPG-nyckel
   apt_key:
     url: https://apt.releases.hashicorp.com/gpg
     state: present
 
-- name: Add HashiCorp apt repository
+- name: Lägg till HashiCorp apt-repository
   apt_repository:
     repo: "deb [arch=amd64] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
     state: present
 
-- name: Install vault
+- name: Installera vault
   apt:
     name: vault
     state: present
 
+- name: Skapa vault data-mapp
+  file:
+    path: "{{ vault_data_path }}"
+    state: directory
+    owner: vault
+    group: vault
+    mode: '0750'
 
+- name: Skriv vault-konfiguration
+  template:
+    src: vault.hcl.j2
+    dest: /etc/vault.d/vault.hcl
+    owner: vault
+    group: vault
+    mode: '0640'
+  notify: restart vault
+
+- name: Flush handlers
+  meta: flush_handlers
+
+- name: Aktivera och starta vault
+  systemd:
+    name: vault
+    enabled: true
+    state: started
+
+- name: Vänta på vault API
+  uri:
+    url: "http://127.0.0.1:{{ vault_port }}/v1/sys/health"
+    status_code: [200, 429, 472, 473, 501, 503]
+  register: vault_health
+  until: vault_health.status in [200, 429, 472, 473, 501, 503]
+  retries: 30
+  delay: 2
+
+- name: Initialisera och konfigurera vault
+  include_tasks: init.yml
