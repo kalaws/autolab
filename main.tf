@@ -205,7 +205,7 @@ except: print('')
         set -e
         sudo mkdir /opt/${var.github_repo}
         sudo chown ansible:ansible /opt/${var.github_repo}
-        sudo -u ansible git clone https://github.com/${var.github_owner}/${var.github_repo}.git /opt/${var.github_repo}
+        sudo -u ansible git clone -b ${var.github_branch} https://github.com/${var.github_owner}/${var.github_repo}.git /opt/${var.github_repo}
         sudo find /opt/${var.github_repo} -type d -exec chmod g+rwxs {} +
         sudo find /opt/${var.github_repo} -type f -exec chmod g+rw {} +
         sudo usermod -aG ansible admin
@@ -293,6 +293,7 @@ except: print('')
       scp $SSH_OPTS ${path.module}/secrets.yml \
         ${var.terraform_ssh_user}@$CONTROL_IP:/tmp/vault_secrets.yml
       ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
+        sudo mkdir -p /opt/${var.github_repo}/ansible/group_vars/all
         sudo mv /tmp/vault_secrets.yml /opt/${var.github_repo}/ansible/group_vars/all/secrets.yml
         sudo chown ansible:ansible /opt/${var.github_repo}/ansible/group_vars/all/secrets.yml
         sudo chmod 600 /opt/${var.github_repo}/ansible/group_vars/all/secrets.yml

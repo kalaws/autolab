@@ -32,6 +32,12 @@ variable "github_repo" {
   default     = "autolab"
 }
 
+variable "github_branch" {
+  type        = string
+  description = "Branch att klona på ansible-noden"
+  default     = "master"
+}
+
 variable "bridge_wan" {
   type        = string
   description = "Bridge för WAN-nät"

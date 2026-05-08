@@ -1,3 +1,5 @@
+github_branch = "10-project-init"
+
 resources = {
   ansible = {
     hostname = "LABITS-ansible"
