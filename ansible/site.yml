@@ -1,14 +1,23 @@
 ---
+- name: Konfigurera ansible control node
+  hosts: localhost
+  connection: local
+  become: true
+  roles:
+    - common
+
 - name: Bootstrap HashiCorp Vault
   hosts: vault
   become: true
   roles:
+    - common
     - vault
 
 - name: Common k8s prerequisites
   hosts: control_plane:workers
   become: true
   roles:
+    - common
     - k8s-common
 
 - name: Initialize control plane
