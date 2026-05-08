@@ -1,0 +1,15 @@
+ui            = true
+disable_mlock = true   # nödvändigt vid installation på CT, men mindre säkert
+
+storage "raft" {
+  path    = "{{ vault_data_path }}"
+  node_id = "{{ inventory_hostname }}"
+}
+
+listener "tcp" {
+  address     = "0.0.0.0:{{ vault_port }}"
+  tls_disable = true
+}
+
+api_addr     = "http://{{ ansible_host }}:{{ vault_port }}"
+cluster_addr = "http://{{ ansible_host }}:{{ vault_port | int + 1 }}"

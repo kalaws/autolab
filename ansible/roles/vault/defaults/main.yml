@@ -1,0 +1,6 @@
+---
+vault_port: 8200
+vault_data_path: /opt/vault/data
+vault_init_file: /opt/vault/init.json
+vault_addr: "http://127.0.0.1:{{ vault_port }}"
+ansible_token_file: /home/ansible/.vault-token
