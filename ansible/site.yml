@@ -13,6 +13,12 @@
     - common
     - vault
 
+- name: Konfigurera Vault AppRole för k8s
+  hosts: vault
+  become: true
+  roles:
+    - vault-config
+
 - name: Common k8s prerequisites
   hosts: control_plane:workers
   become: true
@@ -25,6 +31,12 @@
   become: true
   roles:
     - k8s-master
+
+- name: Hämta Vault secrets till k8s-master
+  hosts: control_plane
+  become: true
+  roles:
+    - k8s-vault
 
 - name: Join workers
   hosts: workers
