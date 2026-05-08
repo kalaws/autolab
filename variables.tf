@@ -23,7 +23,6 @@ variable "resources" {
 variable "github_owner" {
   type        = string
   description = "GitHub-användarnamn eller organisation"
-  default     = "kalaws"
 }
 
 variable "github_repo" {
@@ -53,7 +52,7 @@ variable "dns_servers" {
 variable "workers" {
   type        = list(string)
   description = "Kubernetes worker nodes"
-  default     = ["1", "2"]
+  default     = ["1"]
 }
 
 variable "ssh_public_key_path" {

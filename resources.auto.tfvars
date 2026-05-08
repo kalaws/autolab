@@ -1,5 +1,10 @@
 github_branch = "10-project-init"
+github_owner  = "kalaws"
 
+packer_template = ["ubuntu-2404-q35-template"]
+ct_template     = "local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
+
+# Definiera resurser för varje VM/CT
 resources = {
   ansible = {
     hostname = "LABITS-ansible"
@@ -26,3 +31,6 @@ resources = {
     disk     = 40
   }
 }
+
+# Antal k8s workers
+workers = ["1", "2"]
