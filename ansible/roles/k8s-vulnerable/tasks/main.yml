@@ -1,3 +1,29 @@
+---
+- name: Läs ansible vault-token
+  slurp:
+    src: /home/ansible/.vault-token
+  delegate_to: localhost
+  become: true
+  become_user: ansible
+  register: _vault_token_raw
+  no_log: true
+
+- name: Hämta dockerhub-credentials från Vault
+  uri:
+    url: "http://{{ groups['vault'][0] }}:8200/v1/secret/data/dockerhub"
+    method: GET
+    headers:
+      X-Vault-Token: "{{ _vault_token_raw.content | b64decode | trim }}"
+    status_code: 200
+  register: _vault_dockerhub
+  no_log: true
+
+- name: Sätt dockerhub-credentials
+  set_fact:
+    dockerhub_username: "{{ _vault_dockerhub.json.data.data.username }}"
+    dockerhub_token: "{{ _vault_dockerhub.json.data.data.token }}"
+  no_log: true
+
 # ============================================
 # 1. ClusterAdmin service account (för bred behörighet)
 # ============================================
