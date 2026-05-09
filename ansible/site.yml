@@ -43,3 +43,10 @@
   become: true
   roles:
     - k8s-worker
+
+- name: Driftsätt sårbar webbapp
+  hosts: control_plane
+  become: true
+  tags: vulnerable
+  roles:
+    - k8s-vulnerable
