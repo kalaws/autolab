@@ -1,0 +1,53 @@
+---
+- name: Läs role-id från control node
+  slurp:
+    src: "{{ vault_role_id_file }}"
+  delegate_to: localhost
+  become: false
+  register: _role_id_slurp
+  no_log: true
+
+- name: Läs secret-id från control node
+  slurp:
+    src: "{{ vault_secret_id_file }}"
+  delegate_to: localhost
+  become: false
+  register: _secret_id_slurp
+  no_log: true
+
+- name: Autentisera mot Vault via AppRole
+  uri:
+    url: "http://{{ groups['vault'][0] }}:{{ vault_port }}/v1/auth/approle/login"
+    method: POST
+    body_format: json
+    body:
+      role_id: "{{ _role_id_slurp.content | b64decode | trim }}"
+      secret_id: "{{ _secret_id_slurp.content | b64decode | trim }}"
+    status_code: 200
+  register: _vault_login
+  no_log: true
+
+- name: Hämta dockerhub-secrets från Vault
+  uri:
+    url: "http://{{ groups['vault'][0] }}:{{ vault_port }}/v1/secret/data/dockerhub"
+    method: GET
+    headers:
+      X-Vault-Token: "{{ _vault_login.json.auth.client_token }}"
+    status_code: 200
+  register: _vault_secrets
+  no_log: true
+
+- name: Skapa Kubernetes-secret med dockerhub-credentials
+  kubernetes.core.k8s:
+    kubeconfig: /home/ansible/.kube/config
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ vault_k8s_secret_name }}"
+        namespace: "{{ vault_k8s_namespace }}"
+      type: Opaque
+      stringData:
+        username: "{{ _vault_secrets.json.data.data.username }}"
+        token: "{{ _vault_secrets.json.data.data.token }}"
