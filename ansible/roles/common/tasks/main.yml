@@ -1,4 +1,10 @@
 ---
+- name: Installera acl
+  apt:
+    name: acl
+    state: present
+    update_cache: false
+
 - name: Skapa admin-användare
   user:
     name: admin
