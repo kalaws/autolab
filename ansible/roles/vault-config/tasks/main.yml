@@ -65,7 +65,8 @@
     dest: "{{ vault_role_id_file }}"
     mode: '0600'
   delegate_to: localhost
-  become: false
+  become: true
+  become_user: ansible
   no_log: true
 
 - name: Skriv secret-id till control node
@@ -74,5 +75,6 @@
     dest: "{{ vault_secret_id_file }}"
     mode: '0600'
   delegate_to: localhost
-  become: false
+  become: true
+  become_user: ansible
   no_log: true

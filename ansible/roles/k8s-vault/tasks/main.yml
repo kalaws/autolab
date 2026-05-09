@@ -3,7 +3,8 @@
   slurp:
     src: "{{ vault_role_id_file }}"
   delegate_to: localhost
-  become: false
+  become: true
+  become_user: ansible
   register: _role_id_slurp
   no_log: true
 
@@ -11,7 +12,8 @@
   slurp:
     src: "{{ vault_secret_id_file }}"
   delegate_to: localhost
-  become: false
+  become: true
+  become_user: ansible
   register: _secret_id_slurp
   no_log: true
 
