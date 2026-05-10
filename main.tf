@@ -296,12 +296,12 @@ except: print('')
         done
       "
 
-      echo "Kopierar secrets.yml till ansible-noden..."
-      scp $SSH_OPTS ${path.module}/secrets.yml \
-        ${var.terraform_ssh_user}@$CONTROL_IP:/tmp/vault_secrets.yml
+      echo "Skriver dockerhub-secrets till ansible-noden..."
       ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
         sudo mkdir -p /opt/${var.github_repo}/ansible/group_vars/all
-        sudo mv /tmp/vault_secrets.yml /opt/${var.github_repo}/ansible/group_vars/all/secrets.yml
+        printf 'vault_secrets:\n  dockerhub:\n    username: \"%s\"\n    token: \"%s\"\n' \
+          '${var.dockerhub_username}' '${var.dockerhub_token}' | \
+          sudo tee /opt/${var.github_repo}/ansible/group_vars/all/secrets.yml > /dev/null
         sudo chown ansible:ansible /opt/${var.github_repo}/ansible/group_vars/all/secrets.yml
         sudo chmod 600 /opt/${var.github_repo}/ansible/group_vars/all/secrets.yml
       "
