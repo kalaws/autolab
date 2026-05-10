@@ -275,6 +275,14 @@ except: print('')
       until ssh $SSH_OPTS root@$VAULT_IP true 2>/dev/null; do sleep 5; done
 
       CONTROL_IP="${local.control_ip}"
+      if [ -z "$CONTROL_IP" ]; then
+        echo "Ansible-IP ej tillgänglig i state — hämtar från Proxmox API (VMID=${module.ansible.vm_id})..."
+        until [ -n "$CONTROL_IP" ]; do
+          CONTROL_IP=$(resolve_proxmox_ip "${module.ansible.vm_id}")
+          [ -z "$CONTROL_IP" ] && sleep 5
+        done
+      fi
+      echo "Ansible control IP: $CONTROL_IP"
 
       echo "Skapar bootstrap-användare på vault..."
       ssh $SSH_OPTS root@$VAULT_IP "
