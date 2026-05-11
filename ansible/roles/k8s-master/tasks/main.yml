@@ -29,6 +29,23 @@
     group: ansible
     mode: '0600'
 
+- name: Skapa .kube-katalog för admin-användaren
+  file:
+    path: /home/admin/.kube
+    state: directory
+    mode: '0700'
+    owner: admin
+    group: admin
+
+- name: Kopiera admin.conf till admin-användaren
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /home/admin/.kube/config
+    remote_src: true
+    owner: admin
+    group: admin
+    mode: '0600'
+
 - name: Installera Calico
   command: kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.0/manifests/calico.yaml
   environment:

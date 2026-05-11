@@ -1,0 +1,6 @@
+---
+vault_port: 8200
+vault_role_id_file: /home/ansible/.vault-role-id
+vault_secret_id_file: /home/ansible/.vault-secret-id
+vault_k8s_secret_name: vault-dockerhub
+vault_k8s_namespace: default

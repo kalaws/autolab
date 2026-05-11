@@ -1,0 +1,6 @@
+---
+- name: Kör säkerhetsverktyg mot klustret
+  hosts: control_plane
+  become: true
+  roles:
+    - k8s-security-tools

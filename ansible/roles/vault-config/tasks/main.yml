@@ -1,0 +1,80 @@
+---
+- name: Läs vault init-fil
+  slurp:
+    src: "{{ vault_init_file }}"
+  register: _vault_init
+  no_log: true
+
+- name: Sätt root token
+  set_fact:
+    _vault_root_token: "{{ (_vault_init.content | b64decode | from_json).root_token }}"
+  no_log: true
+
+- name: Aktivera AppRole auth-metod
+  command: vault auth enable approle
+  environment:
+    VAULT_ADDR: "{{ vault_addr }}"
+    VAULT_TOKEN: "{{ _vault_root_token }}"
+  register: _approle_enable
+  failed_when: _approle_enable.rc != 0 and 'path is already in use' not in _approle_enable.stderr
+  changed_when: _approle_enable.rc == 0
+
+- name: Skriv k8s-read policy
+  command:
+    argv: [vault, policy, write, "{{ vault_approle_policy_name }}", /dev/stdin]
+    stdin: |
+      path "secret/data/*" {
+        capabilities = ["read", "list"]
+      }
+  environment:
+    VAULT_ADDR: "{{ vault_addr }}"
+    VAULT_TOKEN: "{{ _vault_root_token }}"
+  changed_when: false
+
+- name: Skapa k8s AppRole
+  command: >
+    vault write auth/approle/role/{{ vault_approle_role_name }}
+    token_policies="{{ vault_approle_policy_name }}"
+    token_ttl=1h
+    token_max_ttl=4h
+  environment:
+    VAULT_ADDR: "{{ vault_addr }}"
+    VAULT_TOKEN: "{{ _vault_root_token }}"
+  changed_when: false
+
+- name: Hämta role-id
+  command: vault read -format=json auth/approle/role/{{ vault_approle_role_name }}/role-id
+  environment:
+    VAULT_ADDR: "{{ vault_addr }}"
+    VAULT_TOKEN: "{{ _vault_root_token }}"
+  register: _role_id_raw
+  changed_when: false
+  no_log: true
+
+- name: Generera secret-id
+  command: vault write -format=json -f auth/approle/role/{{ vault_approle_role_name }}/secret-id
+  environment:
+    VAULT_ADDR: "{{ vault_addr }}"
+    VAULT_TOKEN: "{{ _vault_root_token }}"
+  register: _secret_id_raw
+  no_log: true
+
+- name: Skriv role-id till control node
+  copy:
+    content: "{{ (_role_id_raw.stdout | from_json).data.role_id }}"
+    dest: "{{ vault_role_id_file }}"
+    mode: '0600'
+  delegate_to: localhost
+  become: true
+  become_user: ansible
+  no_log: true
+
+- name: Skriv secret-id till control node
+  copy:
+    content: "{{ (_secret_id_raw.stdout | from_json).data.secret_id }}"
+    dest: "{{ vault_secret_id_file }}"
+    mode: '0600'
+  delegate_to: localhost
+  become: true
+  become_user: ansible
+  no_log: true

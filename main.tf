@@ -265,6 +265,14 @@ except: print('')
       until ssh $SSH_OPTS root@$VAULT_IP true 2>/dev/null; do sleep 5; done
 
       CONTROL_IP="${local.control_ip}"
+      if [ -z "$CONTROL_IP" ]; then
+        echo "Ansible-IP ej tillgänglig i state — hämtar från Proxmox API (VMID=${module.ansible.vm_id})..."
+        until [ -n "$CONTROL_IP" ]; do
+          CONTROL_IP=$(resolve_proxmox_ip "${module.ansible.vm_id}")
+          [ -z "$CONTROL_IP" ] && sleep 5
+        done
+      fi
+      echo "Ansible control IP: $CONTROL_IP"
 
       echo "Skapar bootstrap-användare på vault..."
       ssh $SSH_OPTS root@$VAULT_IP "
@@ -286,12 +294,12 @@ except: print('')
         done
       "
 
-      echo "Kopierar secrets.yml till ansible-noden..."
-      scp $SSH_OPTS ${path.module}/secrets.yml \
-        ${var.terraform_ssh_user}@$CONTROL_IP:/tmp/vault_secrets.yml
+      echo "Skriver dockerhub-secrets till ansible-noden..."
       ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
         sudo mkdir -p /opt/${var.github_repo}/ansible/group_vars/all
-        sudo mv /tmp/vault_secrets.yml /opt/${var.github_repo}/ansible/group_vars/all/secrets.yml
+        printf 'vault_secrets:\n  dockerhub:\n    username: \"%s\"\n    token: \"%s\"\n' \
+          '${var.dockerhub_username}' '${var.dockerhub_token}' | \
+          sudo tee /opt/${var.github_repo}/ansible/group_vars/all/secrets.yml > /dev/null
         sudo chown ansible:ansible /opt/${var.github_repo}/ansible/group_vars/all/secrets.yml
         sudo chmod 600 /opt/${var.github_repo}/ansible/group_vars/all/secrets.yml
       "
@@ -435,11 +443,20 @@ except: print('')
         done
       fi
 
+      VAULT_IP="${local.vault_ip}"
+      if [ -z "$VAULT_IP" ]; then
+        echo "Vault-IP ej tillgänglig i state — hämtar från Proxmox API (VMID=${module.vault.vm_id})..."
+        until [ -n "$VAULT_IP" ]; do
+          VAULT_IP=$(resolve_proxmox_ip "${module.vault.vm_id}")
+          [ -z "$VAULT_IP" ] && sleep 5
+        done
+      fi
+
       CONTROL_SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
 
       echo "Skriver inventory på ansible control node..."
       ssh $CONTROL_SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
-        "sudo -u ansible bash -c 'mkdir -p /opt/${var.github_repo}/ansible && printf \"[vault]\n${local.vault_ip} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519\n\n[control_plane]\n${module.k8s_control.ipv4_address} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519\n\n[workers]\n${join("\\n", [for name, vm in module.k8s_worker : "${vm.ipv4_address} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519"])}\n\" > /opt/${var.github_repo}/ansible/inventory.ini'"
+        "sudo -u ansible bash -c 'mkdir -p /opt/${var.github_repo}/ansible && printf \"[vault]\n$VAULT_IP ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519\n\n[control_plane]\n${module.k8s_control.ipv4_address} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519\n\n[workers]\n${join("\\n", [for name, vm in module.k8s_worker : "${vm.ipv4_address} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519"])}\n\" > /opt/${var.github_repo}/ansible/inventory.ini'"
 
     EOT
   }
