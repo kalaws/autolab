@@ -177,16 +177,6 @@ except: print('')
         sudo chown -R ansible:ansible /home/ansible/.ssh
       "
 
-      echo "Installerar SSH-config för admin-användaren..."
-      ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
-        sudo mkdir -p /home/admin/.ssh
-        sudo cp /home/ansible/.ssh/ansible_ed25519 /home/admin/.ssh/ansible_ed25519
-        sudo chmod 600 /home/admin/.ssh/ansible_ed25519
-        sudo bash -c 'printf \"Host 10.*\n  User admin\n  IdentityFile ~/.ssh/ansible_ed25519\n  StrictHostKeyChecking no\n\" > /home/admin/.ssh/config'
-        sudo chmod 600 /home/admin/.ssh/config
-        sudo chown -R admin:admin /home/admin/.ssh
-      "
-
       echo "Installerar system-wide SSH-config för lab..."
       ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
         sudo mkdir -p /etc/ssh/ssh_config.d
