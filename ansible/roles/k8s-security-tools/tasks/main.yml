@@ -1,0 +1,52 @@
+- name: Ta bort tidigare kube-bench jobb om de finns
+  kubernetes.core.k8s:
+    api_version: batch/v1
+    kind: Job
+    name: kube-bench
+    namespace: default
+    state: absent
+    kubeconfig: /home/ansible/.kube/config
+
+- name: Kopiera kube-bench jobbmanifest
+  copy:
+    src: kube-bench-job.yaml
+    dest: /tmp/kube-bench-job.yaml
+
+- name: Applicera kube-bench jobb
+  kubernetes.core.k8s:
+    src: /tmp/kube-bench-job.yaml
+    state: present
+    kubeconfig: /home/ansible/.kube/config
+
+- name: Vänta på att kube-bench jobbet slutförs
+  kubernetes.core.k8s_info:
+    api_version: batch/v1
+    kind: Job
+    name: kube-bench
+    namespace: default
+    kubeconfig: /home/ansible/.kube/config
+  register: job_status
+  until: >
+    (job_status.resources[0].status.succeeded | default(0)) > 0 or
+    (job_status.resources[0].status.failed    | default(0)) > 0
+  retries: 30
+  delay: 10
+
+- name: Hämta kube-bench resultat
+  command: >
+    kubectl logs -n default
+    -l job-name=kube-bench
+    --tail=-1
+  environment:
+    KUBECONFIG: /home/ansible/.kube/config
+  register: kube_bench_results
+  changed_when: false
+
+- name: Spara kube-bench resultat till fil
+  copy:
+    content: "{{ kube_bench_results.stdout }}"
+    dest: /tmp/kube-bench-results.txt
+
+- name: Skriv ut kube-bench sammanfattning
+  debug:
+    msg: "{{ kube_bench_results.stdout_lines }}"
