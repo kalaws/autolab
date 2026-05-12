@@ -304,7 +304,7 @@ except: print('')
 
       echo "Bootstrappar Vault via Ansible..."
       ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
-        sudo -u ansible bash -c 'printf \"[vault]\n$VAULT_IP ansible_user=ansible ansible_ssh_private_key_file=~/.ssh/ansible_ed25519\n\" \
+        sudo -u ansible bash -c 'printf \"[vault]\n$VAULT_IP\n\" \
           > /tmp/vault_inventory.ini'
         sudo -u ansible ansible-playbook \
           -i /tmp/vault_inventory.ini \
@@ -445,7 +445,7 @@ except: print('')
 
       echo "Skriver inventory på ansible control node..."
       ssh $CONTROL_SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
-        "sudo -u ansible bash -c 'mkdir -p /opt/${var.github_repo}/ansible && printf \"[vault]\n$VAULT_IP ansible_user=${var.ansible_user} ansible_ssh_private_key_file=/home/${var.ansible_user}/.ssh/ansible_ed25519\n\n[control_plane]\n${module.k8s_control.ipv4_address} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=/home/${var.ansible_user}/.ssh/ansible_ed25519\n\n[workers]\n${join("\\n", [for name, vm in module.k8s_worker : "${vm.ipv4_address} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=/home/${var.ansible_user}/.ssh/ansible_ed25519"])}\n\" > /opt/${var.github_repo}/ansible/inventory.ini'"
+        "sudo -u ansible bash -c 'mkdir -p /opt/${var.github_repo}/ansible && printf \"[vault]\n$VAULT_IP\n\n[control_plane]\n${module.k8s_control.ipv4_address}\n\n[workers]\n${join("\\n", [for name, vm in module.k8s_worker : vm.ipv4_address])}\n\" > /opt/${var.github_repo}/ansible/inventory.ini'"
 
     EOT
   }
