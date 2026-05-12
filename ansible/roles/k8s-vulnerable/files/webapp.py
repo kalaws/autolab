@@ -5,7 +5,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return f'Webapp running on {socket.gethostname()}'
+    return f'Webapp running on {socket.gethostname()}\n'
 
 @app.route('/debug')
 def debug():
