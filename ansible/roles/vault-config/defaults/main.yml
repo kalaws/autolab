@@ -2,6 +2,7 @@
 vault_port: 8200
 vault_addr: "http://127.0.0.1:{{ vault_port }}"
 vault_init_file: /opt/vault/init.json
+ansible_token_file: /home/ansible/.vault-token
 vault_approle_role_name: k8s
 vault_approle_policy_name: k8s-read
 vault_role_id_file: /home/ansible/.vault-role-id

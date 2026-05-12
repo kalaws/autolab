@@ -55,9 +55,5 @@
   retries: 30
   delay: 2
 
-- name: Initialisera och konfigurera vault
+- name: Initialisera och unseal vault
   include_tasks: init.yml
-
-- name: Ladda secrets till vault
-  include_tasks: load_secrets.yml
-  when: vault_secrets is defined

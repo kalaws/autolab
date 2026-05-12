@@ -10,6 +10,46 @@
     _vault_root_token: "{{ (_vault_init.content | b64decode | from_json).root_token }}"
   no_log: true
 
+- name: Aktivera KV v2 secrets-engine
+  command: vault secrets enable -path=secret kv-v2
+  environment:
+    VAULT_ADDR: "{{ vault_addr }}"
+    VAULT_TOKEN: "{{ _vault_root_token }}"
+  register: _kv_enable
+  failed_when: _kv_enable.rc != 0 and 'path is already in use' not in _kv_enable.stderr
+  changed_when: _kv_enable.rc == 0
+
+- name: Skriv ansible-read policy
+  command:
+    argv: [vault, policy, write, ansible-read, /dev/stdin]
+    stdin: |
+      path "secret/data/*" {
+        capabilities = ["read", "list"]
+      }
+  environment:
+    VAULT_ADDR: "{{ vault_addr }}"
+    VAULT_TOKEN: "{{ _vault_root_token }}"
+  changed_when: false
+
+- name: Skapa ansible token
+  command: vault token create -policy=ansible-read -format=json
+  environment:
+    VAULT_ADDR: "{{ vault_addr }}"
+    VAULT_TOKEN: "{{ _vault_root_token }}"
+  register: _ansible_token_raw
+  changed_when: false
+  no_log: true
+
+- name: Skriv ansible token till control node
+  copy:
+    content: "{{ (_ansible_token_raw.stdout | from_json).auth.client_token }}"
+    dest: "{{ ansible_token_file }}"
+    mode: '0600'
+  delegate_to: localhost
+  become: true
+  become_user: ansible
+  no_log: true
+
 - name: Aktivera AppRole auth-metod
   command: vault auth enable approle
   environment:
@@ -77,4 +117,18 @@
   delegate_to: localhost
   become: true
   become_user: ansible
+  no_log: true
+
+- name: Ladda secrets till vault
+  uri:
+    url: "http://127.0.0.1:{{ vault_port }}/v1/secret/data/{{ item.key }}"
+    method: POST
+    body_format: json
+    body:
+      data: "{{ item.value }}"
+    headers:
+      X-Vault-Token: "{{ _vault_root_token }}"
+    status_code: [200, 204]
+  loop: "{{ vault_secrets | dict2items }}"
+  when: vault_secrets is defined
   no_log: true
