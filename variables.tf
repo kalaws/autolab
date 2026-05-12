@@ -72,14 +72,3 @@ variable "ansible_user" {
   default     = "ansible"
 }
 
-variable "dockerhub_username" {
-  type        = string
-  description = "Docker Hub användarnamn"
-  sensitive   = true
-}
-
-variable "dockerhub_token" {
-  type        = string
-  description = "Docker Hub access token"
-  sensitive   = true
-}

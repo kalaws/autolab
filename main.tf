@@ -287,14 +287,13 @@ except: print('')
         done
       "
 
-      echo "Skriver dockerhub-secrets till ansible-noden..."
+      echo "Kopierar secrets.yml till ansible-noden..."
+      scp $SSH_OPTS "${path.module}/secrets.yml" ${var.terraform_ssh_user}@$CONTROL_IP:/tmp/vault_secrets.yml
       ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
-        sudo mkdir -p /opt/${var.github_repo}/ansible/group_vars/all
-        printf 'vault_secrets:\n  dockerhub:\n    username: \"%s\"\n    token: \"%s\"\n' \
-          '${var.dockerhub_username}' '${var.dockerhub_token}' | \
-          sudo tee /opt/${var.github_repo}/ansible/group_vars/all/secrets.yml > /dev/null
-        sudo chown ansible:ansible /opt/${var.github_repo}/ansible/group_vars/all/secrets.yml
-        sudo chmod 600 /opt/${var.github_repo}/ansible/group_vars/all/secrets.yml
+        sudo mkdir -p /opt/${var.github_repo}/ansible/group_vars/vault
+        sudo mv /tmp/vault_secrets.yml /opt/${var.github_repo}/ansible/group_vars/vault/secrets.yml
+        sudo chown ansible:ansible /opt/${var.github_repo}/ansible/group_vars/vault/secrets.yml
+        sudo chmod 600 /opt/${var.github_repo}/ansible/group_vars/vault/secrets.yml
       "
 
       echo "Installerar Ansible-collections..."
@@ -316,6 +315,10 @@ except: print('')
       echo "Rensar secrets.yml från ansible-noden..."
       ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
         "sudo rm -f /opt/${var.github_repo}/ansible/group_vars/all/secrets.yml"
+
+      echo "Raderar secrets.yml från ansible-noden..."
+      ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
+        "sudo rm -f /opt/${var.github_repo}/ansible/group_vars/vault/secrets.yml"
 
       echo "Vault bootstrappad."
     EOT
