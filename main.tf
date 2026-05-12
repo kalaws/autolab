@@ -74,8 +74,6 @@ module "vault" {
 }
 
 locals {
-  control_ip = module.ansible.ipv4_address == "not available yet" ? "" : module.ansible.ipv4_address
-  vault_ip   = module.vault.ipv4_address == "not available yet" ? "" : module.vault.ipv4_address
   target_ips = merge(
     { "control" = module.k8s_control.ipv4_address },
     { for name, vm in module.k8s_worker : name => vm.ipv4_address }
@@ -115,14 +113,12 @@ except: print('')
       }
 
       VMID="${module.ansible.vm_id}"
-      CONTROL_IP="${local.control_ip}"
-      if [ -z "$CONTROL_IP" ]; then
-        echo "IP ej tillgänglig i state — hämtar från Proxmox API (VMID=$VMID)..."
-        until [ -n "$CONTROL_IP" ]; do
-          CONTROL_IP=$(resolve_proxmox_ip "$VMID")
-          [ -z "$CONTROL_IP" ] && sleep 5
-        done
-      fi
+      echo "Hämtar ansible control IP från Proxmox API (VMID=$VMID)..."
+      CONTROL_IP=""
+      until [ -n "$CONTROL_IP" ]; do
+        CONTROL_IP=$(resolve_proxmox_ip "$VMID")
+        [ -z "$CONTROL_IP" ] && sleep 5
+      done
       echo "Ansible control IP: $CONTROL_IP"
 
       ROOT_SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
@@ -249,14 +245,12 @@ except: print('')
       }
 
       VMID="${module.vault.vm_id}"
-      VAULT_IP="${local.vault_ip}"
-      if [ -z "$VAULT_IP" ]; then
-        echo "Vault-IP ej tillgänglig i state — hämtar från Proxmox API (VMID=$VMID)..."
-        until [ -n "$VAULT_IP" ]; do
-          VAULT_IP=$(resolve_proxmox_ip "$VMID")
-          [ -z "$VAULT_IP" ] && sleep 5
-        done
-      fi
+      echo "Hämtar vault IP från Proxmox API (VMID=$VMID)..."
+      VAULT_IP=""
+      until [ -n "$VAULT_IP" ]; do
+        VAULT_IP=$(resolve_proxmox_ip "$VMID")
+        [ -z "$VAULT_IP" ] && sleep 5
+      done
       echo "Vault IP: $VAULT_IP"
 
       SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
@@ -264,14 +258,13 @@ except: print('')
       echo "Väntar på SSH till vault ($VAULT_IP)..."
       until ssh $SSH_OPTS root@$VAULT_IP true 2>/dev/null; do sleep 5; done
 
-      CONTROL_IP="${local.control_ip}"
-      if [ -z "$CONTROL_IP" ]; then
-        echo "Ansible-IP ej tillgänglig i state — hämtar från Proxmox API (VMID=${module.ansible.vm_id})..."
-        until [ -n "$CONTROL_IP" ]; do
-          CONTROL_IP=$(resolve_proxmox_ip "${module.ansible.vm_id}")
-          [ -z "$CONTROL_IP" ] && sleep 5
-        done
-      fi
+      CONTROL_VMID="${module.ansible.vm_id}"
+      echo "Hämtar ansible control IP från Proxmox API (VMID=$CONTROL_VMID)..."
+      CONTROL_IP=""
+      until [ -n "$CONTROL_IP" ]; do
+        CONTROL_IP=$(resolve_proxmox_ip "$CONTROL_VMID")
+        [ -z "$CONTROL_IP" ] && sleep 5
+      done
       echo "Ansible control IP: $CONTROL_IP"
 
       echo "Skapar bootstrap-användare på vault..."
@@ -434,23 +427,19 @@ except: print('')
       }
 
       VMID="${module.ansible.vm_id}"
-      CONTROL_IP="${local.control_ip}"
-      if [ -z "$CONTROL_IP" ]; then
-        echo "IP ej tillgänglig i state — hämtar från Proxmox API (VMID=$VMID)..."
-        until [ -n "$CONTROL_IP" ]; do
-          CONTROL_IP=$(resolve_proxmox_ip "$VMID")
-          [ -z "$CONTROL_IP" ] && sleep 5
-        done
-      fi
+      echo "Hämtar ansible control IP från Proxmox API (VMID=$VMID)..."
+      CONTROL_IP=""
+      until [ -n "$CONTROL_IP" ]; do
+        CONTROL_IP=$(resolve_proxmox_ip "$VMID")
+        [ -z "$CONTROL_IP" ] && sleep 5
+      done
 
-      VAULT_IP="${local.vault_ip}"
-      if [ -z "$VAULT_IP" ]; then
-        echo "Vault-IP ej tillgänglig i state — hämtar från Proxmox API (VMID=${module.vault.vm_id})..."
-        until [ -n "$VAULT_IP" ]; do
-          VAULT_IP=$(resolve_proxmox_ip "${module.vault.vm_id}")
-          [ -z "$VAULT_IP" ] && sleep 5
-        done
-      fi
+      echo "Hämtar vault IP från Proxmox API (VMID=${module.vault.vm_id})..."
+      VAULT_IP=""
+      until [ -n "$VAULT_IP" ]; do
+        VAULT_IP=$(resolve_proxmox_ip "${module.vault.vm_id}")
+        [ -z "$VAULT_IP" ] && sleep 5
+      done
 
       CONTROL_SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
 
