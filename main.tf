@@ -450,6 +450,12 @@ except: print('')
       ssh $CONTROL_SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
         "sudo -u ansible bash -c 'mkdir -p /opt/${var.github_repo}/ansible && printf \"[vault]\n$VAULT_IP\n\n[control_plane]\n${module.k8s_control.ipv4_address}\n\n[workers]\n${join("\\n", [for name, vm in module.k8s_worker : vm.ipv4_address])}\n\" > /opt/${var.github_repo}/ansible/inventory.ini'"
 
+      echo "Kör Ansible site.yml..."
+      ssh $CONTROL_SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
+        "sudo -u ansible ansible-playbook \
+          /opt/${var.github_repo}/ansible/site.yml \
+          -i /opt/${var.github_repo}/ansible/inventory.ini"
+
     EOT
   }
 }
