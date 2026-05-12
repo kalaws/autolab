@@ -1,1 +1,0 @@
-webapp_dockerhub_image: "{{ dockerhub_username }}/webapp:latest"
