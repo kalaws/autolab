@@ -456,7 +456,7 @@ except: print('')
 
       echo "Skriver inventory på ansible control node..."
       ssh $CONTROL_SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
-        "sudo -u ansible bash -c 'mkdir -p /opt/${var.github_repo}/ansible && printf \"[vault]\n$VAULT_IP ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519\n\n[control_plane]\n${module.k8s_control.ipv4_address} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519\n\n[workers]\n${join("\\n", [for name, vm in module.k8s_worker : "${vm.ipv4_address} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=~/.ssh/ansible_ed25519"])}\n\" > /opt/${var.github_repo}/ansible/inventory.ini'"
+        "sudo -u ansible bash -c 'mkdir -p /opt/${var.github_repo}/ansible && printf \"[vault]\n$VAULT_IP ansible_user=${var.ansible_user} ansible_ssh_private_key_file=/home/${var.ansible_user}/.ssh/ansible_ed25519\n\n[control_plane]\n${module.k8s_control.ipv4_address} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=/home/${var.ansible_user}/.ssh/ansible_ed25519\n\n[workers]\n${join("\\n", [for name, vm in module.k8s_worker : "${vm.ipv4_address} ansible_user=${var.ansible_user} ansible_ssh_private_key_file=/home/${var.ansible_user}/.ssh/ansible_ed25519"])}\n\" > /opt/${var.github_repo}/ansible/inventory.ini'"
 
     EOT
   }
