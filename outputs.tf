@@ -1,8 +1,3 @@
-output "ansible_ssh_pubkey" {
-  value     = tls_private_key.ansible_ssh.public_key_openssh
-  sensitive = false
-}
-
 output "ansible" {
   value = try(module.ansible.ipv4_address, "not available yet")
 }
