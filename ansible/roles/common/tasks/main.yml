@@ -1,17 +1,13 @@
 ---
-- name: Vänta på att apt lock ska frigöras
-  shell: |
-    while fuser /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock >/dev/null 2>&1; do
-      sleep 5
-    done
-  changed_when: false
-  timeout: 300
-
 - name: Installera acl
   apt:
     name: acl
     state: present
     update_cache: false
+  register: _apt
+  until: _apt is not failed
+  retries: 10
+  delay: 15
 
 - name: Skapa admin-användare
   user:
