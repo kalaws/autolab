@@ -4,6 +4,10 @@
     name: [gpg, curl]
     state: present
     update_cache: true
+  register: _apt
+  until: _apt is not failed
+  retries: 10
+  delay: 15
 
 - name: Lägg till HashiCorp GPG-nyckel
   apt_key:
