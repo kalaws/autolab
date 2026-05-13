@@ -347,6 +347,7 @@ Terraform sparar de genererade privata SSH-nycklarna (`terraform/.terraform_ed25
 *Åtgärd:* Lagra privata nycklar i en hårdvarusäkerhetsnyckel (YubiKey/FIDO2) så att de inte kan kopieras. Begränsa `NOPASSWD`-sudo till specifika kommandon (`ansible`, `kubectl`) istället för `ALL`. Rotera nycklarna efter varje Terraform-körning.
 
 *Accepterat i denna miljö eftersom:* Labbmiljö på ett isolerat nätverk med en enda operatör. I en produktionsmiljö eller flerpersonsmiljö vore detta oacceptabelt.
+
 ---
 
 ### Vad som skyddar miljön
