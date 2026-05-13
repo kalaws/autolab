@@ -288,7 +288,7 @@ except: print('')
       "
 
       echo "Kopierar secrets.yml till ansible-noden..."
-      scp $SSH_OPTS "${path.module}/secrets.yml" ${var.terraform_ssh_user}@$CONTROL_IP:/tmp/vault_secrets.yml
+      scp $SSH_OPTS "${path.module}/../secrets.yml" ${var.terraform_ssh_user}@$CONTROL_IP:/tmp/vault_secrets.yml
       ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
         sudo mkdir -p /opt/${var.github_repo}/ansible/group_vars/vault
         sudo mv /tmp/vault_secrets.yml /opt/${var.github_repo}/ansible/group_vars/vault/secrets.yml
