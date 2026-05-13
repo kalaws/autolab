@@ -211,7 +211,7 @@ packer init .
 packer build .
 cd ..
 
-# 5. Provisionera hela infrastrukturen med Terraform
+# 6. Provisionera hela infrastrukturen med Terraform
 cd terraform
 terraform init
 terraform apply
