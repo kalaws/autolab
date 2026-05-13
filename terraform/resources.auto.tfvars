@@ -22,7 +22,7 @@ resources = {
     hostname = "LABITS-K8S-master"
     cores    = 2
     memory   = 4096
-    disk     = 20
+    disk     = 40
   }
   k8s_worker = {
     hostname = "LABITS-K8S-worker"
