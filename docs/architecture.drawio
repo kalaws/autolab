@@ -85,9 +85,6 @@
             <mxPoint x="557.6956521739132" y="223" as="sourcePoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="vniPk_IETI1rBDz9LC_p-20" parent="1" style="dashed=0;outlineConnect=0;html=1;align=center;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;shape=mxgraph.weblogos.github" value="" vertex="1">
-          <mxGeometry height="75" width="75" x="100" y="227" as="geometry" />
-        </mxCell>
         <mxCell id="vniPk_IETI1rBDz9LC_p-21" edge="1" parent="1" source="vniPk_IETI1rBDz9LC_p-20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" target="vniPk_IETI1rBDz9LC_p-2">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
@@ -114,6 +111,9 @@
         </mxCell>
         <mxCell id="vniPk_IETI1rBDz9LC_p-28" parent="1" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws3.saml_token;fillColor=#D2D3D3;gradientColor=none;labelBackgroundColor=default;labelBorderColor=none;" value="&lt;div&gt;&lt;span style=&quot;&quot;&gt;DockerHub&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;&quot;&gt;Token&lt;/span&gt;&lt;/div&gt;" vertex="1">
           <mxGeometry height="34" width="32.58" x="499" y="271" as="geometry" />
+        </mxCell>
+        <mxCell id="vniPk_IETI1rBDz9LC_p-20" parent="1" style="dashed=0;outlineConnect=0;html=1;align=center;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;shape=mxgraph.weblogos.github" value="&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;Github&lt;/span&gt;" vertex="1">
+          <mxGeometry height="75" width="75" x="100" y="227" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
