@@ -88,9 +88,70 @@ autolab/
 └── README.md
 ```
 
+---
+
+## Komponenter
+
+### Packer — VM-template
+
+Bygger en Ubuntu 24.04 LTS-template i Proxmox med Q35-maskintyp och UEFI (OVMF). Autoinstall körs via en cloud-init CIDATA-ISO. Template:en rensas (SSH host keys, machine-id) och cloud-init konfigureras för Proxmox-kompatibelt NoCloud-läge. Terraform klonar sedan denna template för varje Kubernetes-nod.
+
+### Terraform — provisionering
+
+Provisionerar hela infrastrukturen mot Proxmox via `bpg/proxmox`-providern. Skapar:
+
+1. **Ansible control node** (LXC) — med nesting aktiverat för att köra Ansible
+2. **Vault** (LXC) — enkel container för HashiCorp Vault
+3. **Kubernetes control plane** (VM klonad från Packer-template)
+4. **Kubernetes workers** (VMs klonade från Packer-template, antal styrs av `workers`-variabeln)
+
+Terraform genererar två ED25519-nyckelpar:
+- `terraform_ssh` — för Terraform-provisioners mot LXC-containers
+- `ansible_ssh` — injiceras i alla noder; privnyckeln kopieras till Ansible control node
+
+Bootstrap-provisioners körs via `terraform_data`-resurser med `local-exec` och sköter installation av Ansible, Git och kloning av repot till `/opt/autolab` på control node. Ansible-inventory genereras dynamiskt med de DHCP-tilldelade IP-adresserna och skrivs till control node.
+
+### Ansible — konfigurationshantering
+
+Master-playbooken `site.yml` kör följande plays i ordning:
+
+| # | Play | Roller | Syfte |
+|---|---|---|---|
+| 1 | Ansible control node | `common` | Admin-användare med SSH-nyckel |
+| 2 | Bootstrap Vault | `common`, `vault` | Installera, initialisera och unseala Vault |
+| 3 | Vault AppRole | `vault-config` | Skapa AppRole och lagra DockerHub-credentials |
+| 4 | K8s prerequisites | `common`, `k8s-common` | containerd, kubeadm, kubelet, kubectl |
+| 5 | Control plane | `k8s-master` | `kubeadm init`, Calico CNI |
+| 6 | Vault → K8s | `k8s-vault` | Hämta secrets från Vault till control plane |
+| 7 | Workers | `k8s-worker` | Joina workers med `kubeadm join` |
+| 8 | Sårbar webbapp | `k8s-vulnerable` | Driftsätt webbapp med avsiktliga säkerhetsbrister |
+
+### Rollen vault
+
+Installerar HashiCorp Vault från HashiCorps officiella apt-repository, konfigurerar Vault med en Jinja2-template och väntar på att API:et svarar. Initialiserar och unsealar Vault automatiskt via `init.yml`.
+
+### Rollen vault-config
+
+Konfigurerar ett AppRole-autentiseringssätt i Vault och lagrar DockerHub-credentials (från `secrets.yml`) under `secret/dockerhub`. K8s-noden hämtar sedan dessa credentials via `k8s-vault`-rollen för att bygga och pusha Docker-images.
+
+### Rollen k8s-master
+
+Kör `kubeadm init` med pod-nätverket `10.244.0.0/16`, installerar Calico som CNI-plugin och sparar join-kommandot som ett Ansible-fact för workers. Installerar även Docker CE (behövs för `k8s-vulnerable`-rollens image-bygge).
+
+### Rollen k8s-vulnerable
+
+Driftsätter en avsiktligt sårbar webbapplikation för säkerhetsövning. Hämtar DockerHub-credentials från Vault, bygger och pushar en Docker-image, och applicerar Kubernetes-manifest med följande avsiktliga brister:
+
+- ClusterAdmin-service account (överprivilegerad)
+- Secrets monterade som env-variabler i klartext i manifestet
+- Exponerad via NodePort
+
+### Rollen k8s-security-tools
+
+Kör `kube-bench` som ett Kubernetes Job. kube-bench kontrollerar klustret mot CIS Kubernetes Benchmark och sparar resultatet till `/tmp/kube-bench-results.txt` på control plane.
 
 ---
 
-*Skapad av: Simon Hallberg och Simon Rundell*
-*Kurs: Virtualiseringsteknik*
+*Skapad av: Simon Hallberg och Simon Rundell*  
+*Kurs: Virtualiseringsteknik*  
 *Datum: 2026-05-13*
