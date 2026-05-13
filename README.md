@@ -410,6 +410,10 @@ Alternativet — att lägga credentials direkt i `secrets.yml` och låta Ansible
 
 `k8s-vulnerable`-rollen existerar för att ha konkreta brister att analysera med kube-bench och för att demonstrera skillnaden mellan en säker och osäker Kubernetes-driftsättning. Bristerna är dokumenterade och avsiktliga — de ger underlag för säkerhetsanalysen i rapporten.
 
+### Varför går all Proxmox-kommunikation via API och inte SSH?
+
+Terraform-provisioners och Packer kommunicerar uteslutande med Proxmox via dess REST API. Operatörsdatorn behöver aldrig SSH-åtkomst till själva hypervisorn. Det ger två fördelar: Proxmox-noden behöver inte ha en SSH-nyckel från operatörsdatorn (minskad attackyta), och behörigheter kan begränsas på API-tokennivå i Proxmox RBAC istället för att ge bred SSH-åtkomst. Nackdelen är att API-token och endpoint måste hanteras som secrets — vilket `.env`-filen löser.
+
 ### Varför DockerHub som container registry?
 
 Ett lokalt registry (t.ex. Harbor eller ett Proxmox-hostat registry) hade undvikit beroendet av ett externt konto och internet-åtkomst vid image-push. DockerHub valdes ändå av tre skäl: det kräver noll infrastruktur utöver ett gratis konto, det är den naturliga integrationen för `community.docker`-modulen i Ansible, och det möjliggör att demonstrera hur Vault hanterar externa tjänsters credentials — vilket är ett mer realistiskt scenario än ett internt registry utan autentisering.
