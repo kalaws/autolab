@@ -152,6 +152,99 @@ Kör `kube-bench` som ett Kubernetes Job. kube-bench kontrollerar klustret mot C
 
 ---
 
+## Krav och förutsättningar
+
+**Programvara som måste vara installerad på operatörsdatorn:**
+
+- [Terraform](https://developer.hashicorp.com/terraform) ≥ 1.6
+- [Packer](https://developer.hashicorp.com/packer) ≥ 1.10
+- [Git](https://git-scm.com/)
+
+**Proxmox-krav:**
+
+- Proxmox VE 8.x med API-token för Terraform och Packer
+- LXC-template `ubuntu-24.04-standard_24.04-2_amd64.tar.zst` nedladdad till local storage
+- Ubuntu 24.04 Server ISO tillgänglig på Proxmox-noden (för Packer)
+- Nätverksbridge `vnet1` (eller anpassa `bridge_wan` i `resources.auto.tfvars`)
+
+**Hårdvarukrav på Proxmox-hypervisorn:**
+
+- Minst 16 GB RAM (5 noder, totalt ~13 GB allokerat)
+- Minst 130 GB ledigt diskutrymme
+
+**Secrets-fil:**
+
+Skapa `secrets.yml` baserat på `secrets.yml_example` innan `terraform apply`. Se [Secrets](#secrets).
+
+---
+
+## Kom igång
+
+```bash
+# 1. Klona repot
+git clone https://github.com/kalaws/autolab.git
+cd autolab
+
+# 2. Sätt upp Proxmox API-credentials
+cp .env_example .env
+# Redigera .env med ditt Proxmox-endpoint, token-id och token-secret
+source .env
+
+# 3. Skapa secrets-filen
+cp secrets.yml_example secrets.yml
+# Redigera secrets.yml med DockerHub-credentials
+
+# 4. Ladda ner images till Proxmox (görs en gång via Proxmox-webbgränssnittet eller CLI)
+#
+#    ISO för Packer (VM-template):
+#      ubuntu-24.04.4-live-server-amd64.iso → local:iso/
+#      https://releases.ubuntu.com/24.04/ubuntu-24.04.4-live-server-amd64.iso
+#
+#    LXC-template för Terraform (Ansible control node och Vault):
+#      ubuntu-24.04-standard_24.04-2_amd64.tar.zst → local:vztmpl/
+#      https://images.linuxcontainers.org/ubuntu/24.04/
+#      (eller via Proxmox: Datacenter → pve → local → CT Templates → Download from URL)
+
+# 5. Bygg Kubernetes VM-template med Packer (körs en gång)
+cd packer
+packer init .
+packer build .
+cd ..
+
+# 5. Provisionera hela infrastrukturen med Terraform
+cd terraform
+terraform init
+terraform apply
+```
+
+`terraform apply` sköter allt: skapar noder, bootstrappar Ansible control node, kör Vault-setup och kör sedan hela Ansible-playbooken. Processen tar ca 15–25 minuter.
+
+**Verifiera att klustret är uppe:**
+
+```bash
+# SSH in på control node (IP visas i terraform output)
+ssh admin@<control-node-ip>
+
+# Kör verifieringsplaybooken från control node
+cd /opt/autolab
+sudo -u ansible ansible-playbook ansible/verify.yml -i ansible/inventory.ini
+```
+
+**Kör säkerhetsanalysen (kube-bench):**
+
+```bash
+sudo -u ansible ansible-playbook ansible/security.yml -i ansible/inventory.ini
+# Resultat sparas på control plane: /tmp/kube-bench-results.txt
+```
+
+**Driftsätt den sårbara webbappen separat:**
+
+```bash
+sudo -u ansible ansible-playbook ansible/site.yml -i ansible/inventory.ini --tags vulnerable
+```
+
+---
+
 *Skapad av: Simon Hallberg och Simon Rundell*  
 *Kurs: Virtualiseringsteknik*  
 *Datum: 2026-05-13*
