@@ -385,6 +385,39 @@ ok: [LABITS-K8S-master] => LABITS-K8S-worker-2 är Ready
 TASK [Säkerställ att alla kube-system-poddar kör]
 ok: [LABITS-K8S-master] => Alla kube-system-poddar kör
 ```
+---
+
+## Designval och motivering
+
+### Varför Terraform + Ansible istället för enbart Terraform?
+
+Terraform är bra på att provisionera infrastruktur men saknar idempotent konfigurationshantering av OS-nivå. Ansible hanterar paketinstallation, tjänstkonfiguration och klusterinitiering bättre och gör det möjligt att köra om playbooken utan bieffekter. Kombination: Terraform skapar noderna, Ansible konfigurerar dem.
+
+### Varför LXC för Ansible control och Vault?
+
+Ansible control node och Vault behöver inte kernel-isolation — de kör inga containers och inga privilegierade processer som kräver egna namespaces. LXC-containers startar snabbare, förbrukar mindre RAM och är enklare att provisionera via Proxmox API. Kubernetes-noderna kräver VMs eftersom kubeadm och containerd behöver tillgång till kernel-features som är begränsade i LXC.
+
+### Varför dynamiskt genererade SSH-nyckelpar i Terraform?
+
+Statiska nycklar i repot eller hardkodade i konfiguration är en säkerhetsrisk. Terraform genererar unika nyckelpar vid varje `terraform apply`, lagrar privnycklarna lokalt med `0600`-rättigheter och injicerar publika nycklar i noderna via API. Nycklarna är labbspecifika och försvinner när infrastrukturen rivs.
+
+### Varför HashiCorp Vault för DockerHub-credentials?
+
+Alternativet — att lägga credentials direkt i `secrets.yml` och låta Ansible skicka dem direkt till Kubernetes Secrets — hade fungerat men lämnar credentials synliga som env-variabler i Ansible-output och möjligen i logs. Vault ger ett separat lager: credentials lagras och roteras centralt, och AppRole-autentisering begränsar vilka som kan hämta dem.
+
+### Varför en avsiktligt sårbar webbapp?
+
+`k8s-vulnerable`-rollen existerar för att ha konkreta brister att analysera med kube-bench och för att demonstrera skillnaden mellan en säker och osäker Kubernetes-driftsättning. Bristerna är dokumenterade och avsiktliga — de ger underlag för säkerhetsanalysen i rapporten.
+
+### Varför DockerHub som container registry?
+
+Ett lokalt registry (t.ex. Harbor eller ett Proxmox-hostat registry) hade undvikit beroendet av ett externt konto och internet-åtkomst vid image-push. DockerHub valdes ändå av tre skäl: det kräver noll infrastruktur utöver ett gratis konto, det är den naturliga integrationen för `community.docker`-modulen i Ansible, och det möjliggör att demonstrera hur Vault hanterar externa tjänsters credentials — vilket är ett mer realistiskt scenario än ett internt registry utan autentisering.
+
+Nackdelen är att image-bygget kräver internet-åtkomst från control plane och att DockerHub-credentials måste hanteras som en secret. Det senare är dock i sig ett pedagogiskt poäng: det visar varför Vault behövs.
+
+### Varför Calico som CNI?
+
+Calico stöder NetworkPolicy (till skillnad från Flannel) vilket är ett krav för att kunna demonstrera och testa nätverkssegmentering i klustret. Det är dessutom vältestat med kubeadm och kräver minimal konfiguration för ett labb av denna storlek.
 
 ---
 
