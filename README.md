@@ -286,6 +286,70 @@ Följande säkerhetsåtgärder är implementerade och automatiserade via Terrafo
 
 ---
 
+## Säkerhetsanalys
+
+### Avsiktliga brister i k8s-vulnerable
+
+Rollen `k8s-vulnerable` innehåller medvetet följande säkerhetsbrister som underlag för analys:
+
+**Brist 1: ClusterAdmin service account**
+
+Webbappens pod kör med ett service account som har `cluster-admin`-roll — fulla rättigheter i klustret. En angripare som komprometterar podden kan kontrollera hela klustret via Kubernetes API.
+
+*Åtgärd:* Skapa ett dedikerat service account med minsta nödvändiga RBAC-rättigheter (principen om minsta privilegium).
+
+*Syfte i denna miljö:* Illustrera risken med överprivilegerade service accounts och hur kube-bench flaggar avsaknad av RBAC-härdning.
+
+---
+
+**Brist 2: Secrets som env-variabler i manifest**
+
+Kubernetes-secrets monteras som `env` i pod-specen. Secrets är base64-kodade i etcd men synliga i klartext via `kubectl describe pod` och `kubectl exec`.
+
+*Åtgärd:* Montera secrets som filer med restriktiva filrättigheter, eller integrera en extern secrets manager (Vault Agent Injector / ESO).
+
+*Syfte i denna miljö:* Visa att Kubernetes Secrets inte är krypterade som standard och att env-variabler är ett sämre monteringsalternativ än filer.
+
+---
+
+**Brist 3: NodePort utan autentisering**
+
+Webbapplikationen exponeras via NodePort och är nåbar från alla nätverksgränssnitt utan autentisering.
+
+*Åtgärd:* Använd en Ingress-controller med TLS-terminering och autentisering, eller begränsa NodePort-åtkomst via nätverkspolicyer.
+
+---
+
+### Kvarvarande brister i infrastrukturen
+
+**Brist 4: Okrypterad intern Kubernetes-trafik**
+
+Pod-till-pod-kommunikation inom klustret sker okrypterat (Calico utan WireGuard/eBPF-kryptering). En angripare med åtkomst till nodnivå kan lyssna av trafiken.
+
+*Åtgärd:* Aktivera WireGuard-kryptering i Calico eller installera ett service mesh (Istio/Linkerd) för mTLS.
+
+*Accepterat i denna miljö eftersom:* Labbmiljö utan externa anslutningar. Risken bedöms som låg.
+
+---
+
+**Brist 5: etcd utan kryptering av secrets**
+
+Kubernetes Secrets lagras okrypterade i etcd som standard. Root-åtkomst till control plane ger tillgång till alla secrets.
+
+*Åtgärd:* Aktivera [Encryption at Rest](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/) i `kube-apiserver`.
+
+---
+
+**Brist 6: Komprometterad operatörsdator ger fullständig klusteråtkomst**
+
+Terraform sparar de genererade privata SSH-nycklarna (`terraform/.terraform_ed25519` och `terraform/.ansible_ed25519`) lokalt på operatörsdatorn. Användarna `terraform` och `ansible` har `NOPASSWD:ALL`-sudo på samtliga noder. En angripare som får tillgång till operatörsdatorn får därmed omedelbar root-åtkomst till alla noder utan något ytterligare autentiseringssteg.
+
+*Åtgärd:* Lagra privata nycklar i en hårdvarusäkerhetsnyckel (YubiKey/FIDO2) så att de inte kan kopieras. Begränsa `NOPASSWD`-sudo till specifika kommandon (`ansible`, `kubectl`) istället för `ALL`. Rotera nycklarna efter varje Terraform-körning.
+
+*Accepterat i denna miljö eftersom:* Labbmiljö på ett isolerat nätverk med en enda operatör. I en produktionsmiljö eller flerpersonsmiljö vore detta oacceptabelt.
+
+---
+
 *Skapad av: Simon Hallberg och Simon Rundell*  
 *Kurs: Virtualiseringsteknik*  
 *Datum: 2026-05-13*
