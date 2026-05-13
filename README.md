@@ -245,6 +245,47 @@ sudo -u ansible ansible-playbook ansible/site.yml -i ansible/inventory.ini --tag
 
 ---
 
+## Secrets
+
+Filen `secrets.yml` måste skapas lokalt och **ska aldrig committas till Git** (den finns i `.gitignore`).
+
+```bash
+cp secrets.yml_example secrets.yml
+# Fyll i dockerhub_username och dockerhub_token
+```
+
+Terraform kopierar automatiskt `secrets.yml` till Ansible control node under `terraform apply` och raderar den sedan från noden när Vault har konfigurerats. Secrets lagras därefter i HashiCorp Vault och hämtas därifrån av Ansible vid behov.
+
+Proxmox API-credentials hanteras via `.env` och exporteras som miljövariabler — de skickas aldrig in i Terraform-state.
+
+```yaml
+# secrets.yml_example
+dockerhub_username: ""
+dockerhub_token: ""
+
+vault_secrets:
+  dockerhub:
+    username: "{{ dockerhub_username }}"
+    token: "{{ dockerhub_token }}"
+```
+
+---
+
+## Säkerhetsåtgärder
+
+Följande säkerhetsåtgärder är implementerade och automatiserade via Terraform och Ansible:
+
+| Åtgärd | Var | Hur verifieras det |
+|---|---|---|
+| Unika ED25519-nyckelpar per syfte | Alla noder | Terraform genererar `terraform_ssh` och `ansible_ssh` separat |
+| Root-inloggning via SSH blockerad (admin-user används) | Alla noder | `sshd -T \| grep permitrootlogin` |
+| Secrets raderas från disk efter Vault-import | Ansible control | `ls /opt/autolab/ansible/group_vars/vault/` |
+| Proxmox-credentials aldrig i Terraform-state | Operatörsdator | credentials hanteras via miljövariabler |
+| AppRole med begränsad policy i Vault | Vault | `vault policy read k8s-policy` |
+| Operatörens SSH-nyckel injiceras via Ansible | Alla noder | `authorized_key`-task i `common`-rollen |
+
+---
+
 *Skapad av: Simon Hallberg och Simon Rundell*  
 *Kurs: Virtualiseringsteknik*  
 *Datum: 2026-05-13*
