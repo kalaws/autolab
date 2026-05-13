@@ -347,6 +347,44 @@ Terraform sparar de genererade privata SSH-nycklarna (`terraform/.terraform_ed25
 *Åtgärd:* Lagra privata nycklar i en hårdvarusäkerhetsnyckel (YubiKey/FIDO2) så att de inte kan kopieras. Begränsa `NOPASSWD`-sudo till specifika kommandon (`ansible`, `kubectl`) istället för `ALL`. Rotera nycklarna efter varje Terraform-körning.
 
 *Accepterat i denna miljö eftersom:* Labbmiljö på ett isolerat nätverk med en enda operatör. I en produktionsmiljö eller flerpersonsmiljö vore detta oacceptabelt.
+---
+
+### Vad som skyddar miljön
+
+- Separata SSH-nyckelpar med begränsad livslängd
+- Secrets hanteras via HashiCorp Vault och raderas från disk efter import
+- Proxmox-credentials exponeras aldrig i versionshanteringen
+- kube-bench CIS-benchmark körs automatiserat för att identifiera ytterligare brister
+
+---
+
+## Verifiering
+
+Kör verifieringsplaybooken från Ansible control node:
+
+```bash
+sudo -u ansible ansible-playbook /opt/autolab/ansible/verify.yml \
+  -i /opt/autolab/ansible/inventory.ini
+```
+
+Playbooken kontrollerar:
+
+- Att alla noder svarar och har status `Ready`
+- Att control plane har rätt roll (`node-role.kubernetes.io/control-plane`)
+- Att workers har rätt roll (`node-role.kubernetes.io/worker`)
+- Att alla poddar i `kube-system` är i status `Running`
+
+Förväntat output (förkortat):
+
+```
+TASK [Kontrollera att alla noder är Ready]
+ok: [LABITS-K8S-master] => LABITS-K8S-master är Ready
+ok: [LABITS-K8S-master] => LABITS-K8S-worker-1 är Ready
+ok: [LABITS-K8S-master] => LABITS-K8S-worker-2 är Ready
+
+TASK [Säkerställ att alla kube-system-poddar kör]
+ok: [LABITS-K8S-master] => Alla kube-system-poddar kör
+```
 
 ---
 
