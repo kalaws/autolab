@@ -1,6 +1,7 @@
 github_branch = "10-project-init"
 github_owner  = "kalaws"
 
+node_name       = "pve"
 packer_template = ["ubuntu-2404-q35-template"]
 ct_template     = "local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
 

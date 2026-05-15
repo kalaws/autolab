@@ -46,6 +46,7 @@ module "ansible" {
   source = "./modules/container"
 
   ct_name     = var.resources["ansible"].hostname
+  node_name   = var.node_name
   ct_template = var.ct_template
   memory      = var.resources["ansible"].memory
   cpu_cores   = var.resources["ansible"].cores
@@ -62,6 +63,7 @@ module "vault" {
   source = "./modules/container"
 
   ct_name     = var.resources["vault"].hostname
+  node_name   = var.node_name
   ct_template = var.ct_template
   memory      = var.resources["vault"].memory
   cpu_cores   = var.resources["vault"].cores
@@ -287,7 +289,7 @@ module "k8s_control" {
   source = "./modules/virtual-machine"
 
   vm_name                = var.resources["k8s_control"].hostname
-  node_name              = "pve"
+  node_name              = var.node_name
   packer_template        = var.packer_template
   memory                 = var.resources["k8s_control"].memory
   cpu_cores              = var.resources["k8s_control"].cores
@@ -305,7 +307,7 @@ module "k8s_worker" {
   for_each = toset(var.workers)
 
   vm_name                = "${var.resources["k8s_worker"].hostname}-${each.key}"
-  node_name              = "pve"
+  node_name              = var.node_name
   packer_template        = var.packer_template
   memory                 = var.resources["k8s_worker"].memory
   cpu_cores              = var.resources["k8s_worker"].cores

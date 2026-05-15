@@ -43,6 +43,12 @@ variable "bridge_wan" {
   default     = "vnet1"
 }
 
+variable "node_name" {
+  type        = string
+  description = "Proxmox-nod att deploya resurser på"
+  default     = "pve"
+}
+
 variable "domain" {
   type        = string
   description = "Lokal DNS-domän (matchar pfSense Local Domain)"
