@@ -23,6 +23,11 @@
   apt:
     name: vault
     state: present
+    update_cache: true
+  register: _apt
+  until: _apt is not failed
+  retries: 5
+  delay: 10
 
 - name: Skapa vault data-mapp
   file:
