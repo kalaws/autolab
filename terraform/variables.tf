@@ -43,6 +43,12 @@ variable "bridge_wan" {
   default     = "vnet1"
 }
 
+variable "domain" {
+  type        = string
+  description = "Lokal DNS-domän (matchar pfSense Local Domain)"
+  default     = "lab"
+}
+
 variable "workers" {
   type        = list(string)
   description = "Kubernetes worker nodes"

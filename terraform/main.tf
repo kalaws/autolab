@@ -162,7 +162,7 @@ except: print('')
         sudo mkdir -p /home/ansible/.ssh
         sudo mv /tmp/ansible_ed25519 /home/ansible/.ssh/ansible_ed25519
         sudo chmod 600 /home/ansible/.ssh/ansible_ed25519
-        sudo bash -c 'printf \"Host 10.*\n  User ansible\n  IdentityFile ~/.ssh/ansible_ed25519\n  StrictHostKeyChecking no\n\" > /home/ansible/.ssh/config'
+        sudo bash -c 'printf \"Host *.${var.domain}\n  User ansible\n  IdentityFile ~/.ssh/ansible_ed25519\n  StrictHostKeyChecking no\n\" > /home/ansible/.ssh/config'
         sudo chmod 600 /home/ansible/.ssh/config
         sudo chown -R ansible:ansible /home/ansible/.ssh
       "
@@ -170,7 +170,7 @@ except: print('')
       echo "Installerar system-wide SSH-config för lab..."
       ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
         sudo mkdir -p /etc/ssh/ssh_config.d
-        printf '%s\n' 'Host 10.*' '  StrictHostKeyChecking no' '  UserKnownHostsFile /dev/null' | \
+        printf '%s\n' 'Host *.${var.domain}' '  StrictHostKeyChecking no' '  UserKnownHostsFile /dev/null' | \
           sudo tee /etc/ssh/ssh_config.d/lab.conf > /dev/null
       "
 
