@@ -58,7 +58,7 @@ autolab/
 │   ├── main.tf                    # Alla resurser: LXC-containers, VMs, bootstrap-provisioners
 │   ├── outputs.tf                 # Outputs (IP-adresser m.m.)
 │   ├── variables.tf               # Variabeldefinitioner
-│   ├── resources.auto.tfvars      # Resurskonfiguration (hostname, CPU, RAM, disk)
+│   ├── configuration.auto.tfvars  # Resurskonfiguration (hostname, CPU, RAM, disk)
 │   └── modules/
 │       ├── container/             # Återanvändbar modul för LXC-containers
 │       └── virtual-machine/       # Återanvändbar modul för Proxmox VM (klon av Packer-template)
@@ -82,7 +82,7 @@ autolab/
 ├── docs/
 │   └── architecture.drawio        # Arkitekturdiagram
 │
-├── .env_example                   # Mall för Proxmox API-credentials (källa via source)
+├── .env.example                   # Mall för Proxmox API-credentials (källa via source)
 ├── secrets.yml_example            # Mall för secrets.yml
 ├── .gitignore
 └── README.md
@@ -165,7 +165,7 @@ Kör `kube-bench` som ett Kubernetes Job. kube-bench kontrollerar klustret mot C
 - Proxmox VE 8.x med API-token för Terraform och Packer
 - LXC-template `ubuntu-24.04-standard_24.04-2_amd64.tar.zst` nedladdad till local storage
 - Ubuntu 24.04 Server ISO tillgänglig på Proxmox-noden (för Packer)
-- Nätverksbridge `vnet1` (eller anpassa `bridge_wan` i `resources.auto.tfvars`)
+- Nätverksbridge `vnet1` (eller anpassa `bridge_wan` i `configuration.auto.tfvars`)
 
 **Hårdvarukrav på Proxmox-hypervisorn:**
 
@@ -186,7 +186,7 @@ git clone https://github.com/kalaws/autolab.git
 cd autolab
 
 # 2. Sätt upp Proxmox API-credentials
-cp .env_example .env
+cp .env.example .env
 # Redigera .env med ditt Proxmox-endpoint, token-id och token-secret
 source .env
 
