@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net">
   <diagram name="Sida-1" id="6bph6VPqUYR4DhC_4UM0">
-    <mxGraphModel dx="746" dy="519" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="1654" math="0" shadow="0">
+    <mxGraphModel dx="1119" dy="779" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="1654" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -92,10 +92,10 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="vniPk_IETI1rBDz9LC_p-23" parent="1" style="shape=image;html=1;verticalAlign=top;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;imageAspect=0;aspect=fixed;image=https://icons.diagrams.net/icon-cache1/Social_Media-2404/social_media_social_media_logo_docker-630.svg" value="Sårbar&lt;br&gt;Flask" vertex="1">
-          <mxGeometry height="24" width="24" x="329" y="278" as="geometry" />
+          <mxGeometry height="24" width="24" x="329" y="294" as="geometry" />
         </mxCell>
         <mxCell id="vniPk_IETI1rBDz9LC_p-24" parent="1" style="shape=image;html=1;verticalAlign=top;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;imageAspect=0;aspect=fixed;image=https://icons.diagrams.net/icon-cache1/Social_Media-2404/social_media_social_media_logo_docker-630.svg" value="Sårbar&lt;br&gt;Flask" vertex="1">
-          <mxGeometry height="24" width="24" x="546" y="277" as="geometry" />
+          <mxGeometry height="24" width="24" x="546" y="293" as="geometry" />
         </mxCell>
         <mxCell id="vniPk_IETI1rBDz9LC_p-25" edge="1" parent="1" source="bSIwzvymGikvmksSl5OG-22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=none;startFill=0;endArrow=none;endFill=0;exitX=-0.008;exitY=0.522;exitDx=0;exitDy=0;exitPerimeter=0;" target="vniPk_IETI1rBDz9LC_p-7">
           <mxGeometry relative="1" as="geometry">
@@ -129,7 +129,7 @@
         <mxCell id="vniPk_IETI1rBDz9LC_p-7" parent="1" style="image;aspect=fixed;perimeter=ellipsePerimeter;html=1;align=center;fontSize=12;verticalAlign=top;fontColor=#364149;shadow=0;dashed=0;image=img/lib/cumulus/container.svg;" value="Ansible" vertex="1">
           <mxGeometry height="60" width="67.5" x="310" y="367" as="geometry" />
         </mxCell>
-        <mxCell id="vniPk_IETI1rBDz9LC_p-3" parent="1" style="verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=none;fillColor=#00BEF2;shape=mxgraph.azure.virtual_machine;" value="K8S-master" vertex="1">
+        <mxCell id="vniPk_IETI1rBDz9LC_p-3" parent="1" style="verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=none;fillColor=#00BEF2;shape=mxgraph.azure.virtual_machine;" value="&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;K8S-master&lt;/span&gt;" vertex="1">
           <mxGeometry height="60" width="75" x="520" y="367" as="geometry" />
         </mxCell>
         <mxCell id="bSIwzvymGikvmksSl5OG-20" edge="1" parent="1" source="vniPk_IETI1rBDz9LC_p-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.55;exitY=-0.004;exitDx=0;exitDy=0;entryX=0;entryY=0.717;entryDx=0;entryDy=0;entryPerimeter=0;exitPerimeter=0;" target="vniPk_IETI1rBDz9LC_p-3">
@@ -194,6 +194,12 @@
         </mxCell>
         <mxCell id="bSIwzvymGikvmksSl5OG-35" edge="1" parent="1" source="bSIwzvymGikvmksSl5OG-32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" target="vniPk_IETI1rBDz9LC_p-6">
           <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="bSIwzvymGikvmksSl5OG-36" parent="1" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws3.saml_token;fillColor=#D2D3D3;gradientColor=none;labelBackgroundColor=default;labelBorderColor=none;" value="" vertex="1">
+          <mxGeometry height="34" width="32.58" x="322" y="255" as="geometry" />
+        </mxCell>
+        <mxCell id="bSIwzvymGikvmksSl5OG-37" parent="1" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws3.saml_token;fillColor=#D2D3D3;gradientColor=none;labelBackgroundColor=default;labelBorderColor=none;" value="" vertex="1">
+          <mxGeometry height="34" width="32.58" x="539.42" y="255" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
