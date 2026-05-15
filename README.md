@@ -458,6 +458,12 @@ Ett lokalt registry (t.ex. Harbor eller ett Proxmox-hostat registry) hade undvik
 
 Nackdelen är att image-bygget kräver internet-åtkomst från control plane och att DockerHub-credentials måste hanteras som en secret. Det senare är dock i sig en pedagogiskt poäng: det visar varför Vault behövs.
 
+### Varför utökas disken via Ansible och inte Packer eller cloud-init?
+
+Packer bygger template-VM:en med en liten disk (10 GB) för snabb build. Terraform klonar sedan template:en och sätter den faktiska diskstorleken (40 GB) — men Proxmox expanderar bara blockenheten, inte partitionerna eller LV:t inuti. Cloud-init:s `growpart`-modul löser detta normalt i riktiga cloud-images, men kräver att cloud-init körs med rätt datasource och konfiguration efter varje klon, vilket är svårt att garantera.
+
+`common`-rollen utökar i stället disken explicit med `growpart`, `pvresize` och `lvextend -r` på alla noder där `ubuntu-vg` finns. Stegen är idempotenta — ingenting händer om LV:t redan är maximalt. LXC-containers (som saknar LVM) hoppas automatiskt över via villkoret på `vg_free`.
+
 ### Varför Calico som CNI?
 
 Calico stöder NetworkPolicy (till skillnad från Flannel) vilket är ett krav för att kunna demonstrera och testa nätverkssegmentering i klustret. Det är dessutom vältestat med kubeadm och kräver minimal konfiguration för ett labb av denna storlek.

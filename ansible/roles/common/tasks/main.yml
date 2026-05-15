@@ -1,13 +1,47 @@
 ---
-- name: Installera acl
+- name: Installera beroenden
   apt:
-    name: acl
+    name:
+      - acl
+      - cloud-guest-utils
     state: present
     update_cache: false
   register: _apt
   until: _apt is not failed
   retries: 10
   delay: 15
+
+- name: Kontrollera om ubuntu-vg finns och har ej allokerat utrymme
+  command: vgs --noheadings -o vg_free --units b --nosuffix ubuntu-vg
+  register: _vg_free
+  changed_when: false
+  failed_when: false
+
+- name: Utöka disk till full storlek (körs bara på VM-noder med ubuntu-vg)
+  when: _vg_free.rc == 0 and (_vg_free.stdout | trim | int) > 0
+  block:
+    - name: Hitta LVM physical volume
+      command: pvs --noheadings -o pv_name
+      register: _pv_device
+      changed_when: false
+
+    - name: Expandera partition till full diskstorlek
+      command: >-
+        growpart
+        {{ _pv_device.stdout | trim | regex_replace('[0-9]+$', '') }}
+        {{ _pv_device.stdout | trim | regex_search('[0-9]+$') }}
+      register: _growpart
+      failed_when: _growpart.rc not in [0, 1]
+      changed_when: _growpart.rc == 0
+
+    - name: Uppdatera LVM physical volume efter partitionsexpansion
+      command: pvresize {{ _pv_device.stdout | trim }}
+
+    - name: Utöka ubuntu-lv till 100% av VG och växer filsystemet
+      command: lvextend -r -l +100%FREE /dev/ubuntu-vg/ubuntu-lv
+      register: _lvextend
+      failed_when: _lvextend.rc != 0 and 'already at maximum size' not in _lvextend.stderr
+      changed_when: _lvextend.rc == 0
 
 - name: Skapa admin-användare
   user:
