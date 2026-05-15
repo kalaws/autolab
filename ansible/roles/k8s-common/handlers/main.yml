@@ -1,4 +1,4 @@
-- name: Aktivera och starta containerd
+- name: Starta om containerd
   systemd:
     name: containerd
     enabled: true

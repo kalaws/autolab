@@ -98,12 +98,14 @@
   shell: containerd config default > /etc/containerd/config.toml
   args:
     creates: /etc/containerd/config.toml
+  notify: Starta om containerd
 
 - name: Aktivera SystemdCgroup i containerd
   replace:
     path: /etc/containerd/config.toml
     regexp: 'SystemdCgroup = false'
     replace: 'SystemdCgroup = true'
+  notify: Starta om containerd
 
 - name: Lägg till Docker apt-nyckel
   apt_key:
