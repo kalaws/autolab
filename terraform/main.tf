@@ -51,7 +51,6 @@ module "ansible" {
   cpu_cores   = var.resources["ansible"].cores
   disk        = var.resources["ansible"].disk
   bridge_wan  = var.bridge_wan
-  dns_servers = var.dns_servers
   ssh_keys    = [trimspace(tls_private_key.terraform_ssh.public_key_openssh), trimspace(file(pathexpand(var.ssh_public_key_path)))]
   nesting     = true
 }
@@ -68,7 +67,6 @@ module "vault" {
   cpu_cores   = var.resources["vault"].cores
   disk        = var.resources["vault"].disk
   bridge_wan  = var.bridge_wan
-  dns_servers = var.dns_servers
   ssh_keys    = [trimspace(tls_private_key.terraform_ssh.public_key_openssh), trimspace(file(pathexpand(var.ssh_public_key_path)))]
   nesting     = true
 }
@@ -154,11 +152,7 @@ except: print('')
 
       echo "Konfigurerar DNS på ansible control ($CONTROL_GW)..."
       ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
-        "{ echo 'nameserver $CONTROL_GW'; %{ for dns in var.dns_servers ~}echo 'nameserver ${dns}'; %{ endfor ~}} > /etc/resolv.conf"
-      if ! ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
-        "python3 -c 'import socket; socket.setdefaulttimeout(2); socket.getaddrinfo(\"packages.ubuntu.com\", 80)' 2>/dev/null"; then
-        echo "WARNING: Gateway $CONTROL_GW svarar inte på DNS — faller tillbaka på ${join(", ", var.dns_servers)}"
-      fi
+        "echo 'nameserver $CONTROL_GW' > /etc/resolv.conf"
 
       echo "Kopierar nycklar till control node..."
       scp $SSH_OPTS ${local_sensitive_file.ansible_ssh_private.filename} ${var.terraform_ssh_user}@$CONTROL_IP:/tmp/ansible_ed25519
@@ -257,6 +251,10 @@ except: print('')
 
       echo "Väntar på SSH till vault ($VAULT_IP)..."
       until ssh $SSH_OPTS root@$VAULT_IP true 2>/dev/null; do sleep 5; done
+
+      echo "Konfigurerar DNS på vault..."
+      VAULT_GW=$(ssh $SSH_OPTS root@$VAULT_IP "ip route show default | awk '{print \$3; exit}'")
+      ssh $SSH_OPTS root@$VAULT_IP "echo 'nameserver $VAULT_GW' > /etc/resolv.conf"
 
       CONTROL_VMID="${module.ansible.vm_id}"
       echo "Hämtar ansible control IP från Proxmox API (VMID=$CONTROL_VMID)..."

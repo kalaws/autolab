@@ -43,12 +43,6 @@ variable "bridge_wan" {
   default     = "vnet1"
 }
 
-variable "dns_servers" {
-  type        = list(string)
-  description = "DNS-servrar för CT:arna, utöver gateway"
-  default     = ["8.8.8.8"]
-}
-
 variable "workers" {
   type        = list(string)
   description = "Kubernetes worker nodes"

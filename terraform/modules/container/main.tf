@@ -18,10 +18,6 @@ resource "proxmox_virtual_environment_container" "ct" {
   initialization {
     hostname = var.ct_name
 
-    dns {
-      servers = var.dns_servers
-    }
-
     ip_config {
       ipv4 {
         address = "dhcp"

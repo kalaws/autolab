@@ -34,12 +34,6 @@ variable "bridge_wan" {
   description = "Bridge för nätverksinterface"
 }
 
-variable "dns_servers" {
-  type        = list(string)
-  description = "DNS-servrar"
-  default     = ["8.8.8.8"]
-}
-
 variable "ssh_keys" {
   type        = list(string)
   description = "Publika SSH-nycklar för root-kontot"
