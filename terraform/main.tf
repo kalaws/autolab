@@ -152,7 +152,7 @@ except: print('')
 
       echo "Konfigurerar DNS på ansible control ($CONTROL_GW)..."
       ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
-        "echo 'nameserver $CONTROL_GW' > /etc/resolv.conf"
+        "echo 'nameserver $CONTROL_GW' | sudo tee /etc/resolv.conf > /dev/null"
 
       echo "Kopierar nycklar till control node..."
       scp $SSH_OPTS ${local_sensitive_file.ansible_ssh_private.filename} ${var.terraform_ssh_user}@$CONTROL_IP:/tmp/ansible_ed25519
