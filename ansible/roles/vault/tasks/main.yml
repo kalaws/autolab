@@ -9,15 +9,23 @@
   retries: 10
   delay: 15
 
-- name: Lägg till HashiCorp GPG-nyckel
-  apt_key:
+- name: Hämta HashiCorp GPG-nyckel
+  get_url:
     url: https://apt.releases.hashicorp.com/gpg
-    state: present
+    dest: /tmp/hashicorp.asc
+    mode: '0644'
+    force: false
+
+- name: Importera HashiCorp GPG-nyckel till keyring
+  shell: gpg --dearmor < /tmp/hashicorp.asc > /usr/share/keyrings/hashicorp-archive-keyring.gpg
+  args:
+    creates: /usr/share/keyrings/hashicorp-archive-keyring.gpg
 
 - name: Lägg till HashiCorp apt-repository
   apt_repository:
-    repo: "deb [arch=amd64] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+    repo: "deb [arch={{ ansible_architecture | regex_replace('x86_64', 'amd64') }} signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
     state: present
+    filename: hashicorp
 
 - name: Installera vault
   apt:
