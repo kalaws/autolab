@@ -262,7 +262,7 @@ resource "terraform_data" "bootstrap_vault" {
 
       echo "Bootstrappar Vault via Ansible..."
       ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP "
-        sudo -u ansible bash -c 'printf \"[vault]\n$VAULT_IP\n\" \
+        sudo -u ansible bash -c 'printf \"[vault]\n${var.resources["vault"].hostname}.${var.domain}\n\" \
           > /tmp/vault_inventory.ini'
         sudo -u ansible ansible-playbook \
           -i /tmp/vault_inventory.ini \
