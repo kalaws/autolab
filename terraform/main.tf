@@ -89,6 +89,7 @@ resource "terraform_data" "bootstrap_control" {
   ]
 
   provisioner "local-exec" {
+    interpreter = ["/bin/bash", "-c"]
     command = <<-EOT
       # resolve_proxmox_ip <vmid> — frågar Proxmox API om aktuell IP för en CT (kräver PROXMOX_VE_API_TOKEN)
       source "${path.module}/scripts/proxmox_helpers.sh"
@@ -199,6 +200,7 @@ resource "terraform_data" "bootstrap_vault" {
   ]
 
   provisioner "local-exec" {
+    interpreter = ["/bin/bash", "-c"]
     command = <<-EOT
       # resolve_proxmox_ip <vmid> — frågar Proxmox API om aktuell IP för en CT (kräver PROXMOX_VE_API_TOKEN)
       source "${path.module}/scripts/proxmox_helpers.sh"
@@ -327,6 +329,7 @@ resource "terraform_data" "create_admin_k8s" {
   ]
 
   provisioner "local-exec" {
+    interpreter = ["/bin/bash", "-c"]
     command = <<-EOT
       SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.ansible_ssh_private.filename}"
 
@@ -364,6 +367,7 @@ resource "terraform_data" "write_inventory" {
   ]
 
   provisioner "local-exec" {
+    interpreter = ["/bin/bash", "-c"]
     command = <<-EOT
       CONTROL_IP=$(cat "${path.module}/.control_ip")
       echo "Ansible control IP: $CONTROL_IP"
