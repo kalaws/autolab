@@ -1,15 +1,9 @@
 <mxfile host="app.diagrams.net">
   <diagram name="Sida-1" id="6bph6VPqUYR4DhC_4UM0">
-    <mxGraphModel dx="916" dy="623" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="1654" math="0" shadow="0">
+    <mxGraphModel dx="663" dy="461" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="1654" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="vniPk_IETI1rBDz9LC_p-1" edge="1" parent="1" source="vniPk_IETI1rBDz9LC_p-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="vniPk_IETI1rBDz9LC_p-7">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="vniPk_IETI1rBDz9LC_p-2" parent="1" style="verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=none;fillColor=#00BEF2;shape=mxgraph.azure.virtual_machine;" value="Terraform&lt;br&gt;ControlHost" vertex="1">
-          <mxGeometry height="60" width="75" x="100" y="367" as="geometry" />
-        </mxCell>
         <mxCell id="vniPk_IETI1rBDz9LC_p-3" parent="1" style="verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=none;fillColor=#00BEF2;shape=mxgraph.azure.virtual_machine;" value="K8S-master" vertex="1">
           <mxGeometry height="60" width="75" x="520" y="367" as="geometry" />
         </mxCell>
@@ -85,9 +79,6 @@
             <mxPoint x="557.6956521739132" y="223" as="sourcePoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="vniPk_IETI1rBDz9LC_p-21" edge="1" parent="1" source="vniPk_IETI1rBDz9LC_p-20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" target="vniPk_IETI1rBDz9LC_p-2">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
         <mxCell id="vniPk_IETI1rBDz9LC_p-22" edge="1" parent="1" source="vniPk_IETI1rBDz9LC_p-20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.376;entryY=-0.004;entryDx=0;entryDy=0;entryPerimeter=0;">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="173" y="222.48837209302326" as="sourcePoint" />
@@ -112,8 +103,23 @@
         <mxCell id="vniPk_IETI1rBDz9LC_p-28" parent="1" style="outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;shape=mxgraph.aws3.saml_token;fillColor=#D2D3D3;gradientColor=none;labelBackgroundColor=default;labelBorderColor=none;" value="&lt;div&gt;&lt;span style=&quot;&quot;&gt;DockerHub&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;&quot;&gt;Token&lt;/span&gt;&lt;/div&gt;" vertex="1">
           <mxGeometry height="34" width="32.58" x="499" y="271" as="geometry" />
         </mxCell>
+        <mxCell id="bSIwzvymGikvmksSl5OG-18" edge="1" parent="1" source="vniPk_IETI1rBDz9LC_p-20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="bSIwzvymGikvmksSl5OG-5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <mxCell id="vniPk_IETI1rBDz9LC_p-20" parent="1" style="dashed=0;outlineConnect=0;html=1;align=center;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;shape=mxgraph.weblogos.github" value="&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;Github&lt;/span&gt;" vertex="1">
-          <mxGeometry height="75" width="75" x="100" y="227" as="geometry" />
+          <mxGeometry height="75" width="75" x="88" y="227" as="geometry" />
+        </mxCell>
+        <mxCell id="bSIwzvymGikvmksSl5OG-11" edge="1" parent="1" source="bSIwzvymGikvmksSl5OG-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="vniPk_IETI1rBDz9LC_p-7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="bSIwzvymGikvmksSl5OG-3" parent="1" style="shape=image;verticalLabelPosition=bottom;labelBackgroundColor=default;verticalAlign=top;aspect=fixed;imageAspect=0;image=https://www.proxmox.com/images/proxmox/logos/mediakit-proxmox-server-solutions-logos-light.svg;clipPath=inset(15% 3.9% 15% 78.6%);" value="" vertex="1">
+          <mxGeometry height="65.5" width="90.97" x="190" y="364" as="geometry" />
+        </mxCell>
+        <mxCell id="bSIwzvymGikvmksSl5OG-16" edge="1" parent="1" source="bSIwzvymGikvmksSl5OG-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="bSIwzvymGikvmksSl5OG-3" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="bSIwzvymGikvmksSl5OG-5" parent="1" style="image;html=1;image=img/lib/clip_art/computers/Workstation_128x128.png" value="&lt;div&gt;Terraform&lt;/div&gt;&lt;div&gt;ControlHost&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="80" x="85" y="357" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
