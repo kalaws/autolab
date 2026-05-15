@@ -88,27 +88,8 @@ resource "terraform_data" "bootstrap_control" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      # Proxmox populerar ipv4-kartan asynkront — falla tillbaka på API-polling vid race condition
-      resolve_proxmox_ip() {
-        local vmid=$1 endpoint=$PROXMOX_VE_ENDPOINT
-        if [ -n "$PROXMOX_VE_API_TOKEN" ]; then
-          AUTH="-H \"Authorization: PVEAPIToken=$PROXMOX_VE_API_TOKEN\""
-        else
-          local ticket
-          ticket=$(curl -fsSk -X POST "$endpoint/api2/json/access/ticket" \
-            -d "username=$PROXMOX_VE_USERNAME&password=$PROXMOX_VE_PASSWORD" | \
-            python3 -c "import sys,json; print(json.load(sys.stdin)['data']['ticket'])" 2>/dev/null)
-          AUTH="-b \"PVEAuthCookie=$ticket\""
-        fi
-        eval curl -fsSk $AUTH "$endpoint/api2/json/nodes/pve/lxc/$vmid/interfaces" 2>/dev/null | \
-          python3 -c "
-import sys,json
-try:
-    d=json.load(sys.stdin).get('data',[])
-    print(next((i['inet'].split('/')[0] for i in d if i.get('name')=='eth0' and 'inet' in i),''))
-except: print('')
-" 2>/dev/null
-      }
+      # resolve_proxmox_ip <vmid> — frågar Proxmox API om aktuell IP för en CT (kräver PROXMOX_VE_API_TOKEN)
+      source "${path.module}/scripts/proxmox_helpers.sh"
 
       VMID="${module.ansible.vm_id}"
       echo "Hämtar ansible control IP från Proxmox API (VMID=$VMID)..."
@@ -216,27 +197,8 @@ resource "terraform_data" "bootstrap_vault" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      # Proxmox populerar ipv4-kartan asynkront — fall tillbaka på API-polling vid race condition
-      resolve_proxmox_ip() {
-        local vmid=$1 endpoint=$PROXMOX_VE_ENDPOINT
-        if [ -n "$PROXMOX_VE_API_TOKEN" ]; then
-          AUTH="-H \"Authorization: PVEAPIToken=$PROXMOX_VE_API_TOKEN\""
-        else
-          local ticket
-          ticket=$(curl -fsSk -X POST "$endpoint/api2/json/access/ticket" \
-            -d "username=$PROXMOX_VE_USERNAME&password=$PROXMOX_VE_PASSWORD" | \
-            python3 -c "import sys,json; print(json.load(sys.stdin)['data']['ticket'])" 2>/dev/null)
-          AUTH="-b \"PVEAuthCookie=$ticket\""
-        fi
-        eval curl -fsSk $AUTH "$endpoint/api2/json/nodes/pve/lxc/$vmid/interfaces" 2>/dev/null | \
-          python3 -c "
-import sys,json
-try:
-    d=json.load(sys.stdin).get('data',[])
-    print(next((i['inet'].split('/')[0] for i in d if i.get('name')=='eth0' and 'inet' in i),''))
-except: print('')
-" 2>/dev/null
-      }
+      # resolve_proxmox_ip <vmid> — frågar Proxmox API om aktuell IP för en CT (kräver PROXMOX_VE_API_TOKEN)
+      source "${path.module}/scripts/proxmox_helpers.sh"
 
       VMID="${module.vault.vm_id}"
       echo "Hämtar vault IP från Proxmox API (VMID=$VMID)..."
@@ -406,26 +368,8 @@ resource "terraform_data" "write_inventory" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      resolve_proxmox_ip() {
-        local vmid=$1 endpoint="$PROXMOX_VE_ENDPOINT"
-        if [ -n "$PROXMOX_VE_API_TOKEN" ]; then
-          AUTH="-H \"Authorization: PVEAPIToken=$PROXMOX_VE_API_TOKEN\""
-        else
-          local ticket
-          ticket=$(curl -fsSk -X POST "$endpoint/api2/json/access/ticket" \
-            -d "username=$PROXMOX_VE_USERNAME&password=$PROXMOX_VE_PASSWORD" | \
-            python3 -c "import sys,json; print(json.load(sys.stdin)['data']['ticket'])" 2>/dev/null)
-          AUTH="-b \"PVEAuthCookie=$ticket\""
-        fi
-        eval curl -fsSk $AUTH "$endpoint/api2/json/nodes/pve/lxc/$vmid/interfaces" 2>/dev/null | \
-          python3 -c "
-import sys,json
-try:
-    d=json.load(sys.stdin).get('data',[])
-    print(next((i['inet'].split('/')[0] for i in d if i.get('name')=='eth0' and 'inet' in i),''))
-except: print('')
-" 2>/dev/null
-      }
+      # resolve_proxmox_ip <vmid> — frågar Proxmox API om aktuell IP för en CT (kräver PROXMOX_VE_API_TOKEN)
+      source "${path.module}/scripts/proxmox_helpers.sh"
 
       VMID="${module.ansible.vm_id}"
       echo "Hämtar ansible control IP från Proxmox API (VMID=$VMID)..."
