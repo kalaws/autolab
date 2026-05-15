@@ -137,7 +137,7 @@ resource "terraform_data" "bootstrap_control" {
 
       echo "Konfigurerar DNS på ansible control ($CONTROL_GW)..."
       ssh $SSH_OPTS ${var.terraform_ssh_user}@$CONTROL_IP \
-        "echo 'nameserver $CONTROL_GW' | sudo tee /etc/resolv.conf > /dev/null"
+        "printf 'nameserver %s\nsearch ${var.domain}\n' '$CONTROL_GW' | sudo tee /etc/resolv.conf > /dev/null"
 
       echo "Kopierar nycklar till control node..."
       scp $SSH_OPTS ${local_sensitive_file.ansible_ssh_private.filename} ${var.terraform_ssh_user}@$CONTROL_IP:/tmp/ansible_ed25519
@@ -221,7 +221,7 @@ resource "terraform_data" "bootstrap_vault" {
 
       echo "Konfigurerar DNS på vault..."
       VAULT_GW=$(ssh $SSH_OPTS root@$VAULT_IP "ip route show default | awk '{print \$3; exit}'")
-      ssh $SSH_OPTS root@$VAULT_IP "echo 'nameserver $VAULT_GW' > /etc/resolv.conf"
+      ssh $SSH_OPTS root@$VAULT_IP "printf 'nameserver %s\nsearch ${var.domain}\n' '$VAULT_GW' > /etc/resolv.conf"
 
       CONTROL_IP=$(cat "${path.module}/.control_ip")
       echo "Ansible control IP: $CONTROL_IP"
