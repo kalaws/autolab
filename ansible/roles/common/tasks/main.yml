@@ -1,4 +1,39 @@
 ---
+- name: Hitta apt sources-filer
+  find:
+    paths:
+      - /etc/apt
+      - /etc/apt/sources.list.d
+    patterns:
+      - 'sources.list'
+      - '*.sources'
+      - '*.list'
+    file_type: file
+  register: _apt_sources_files
+
+- name: Lägg svensk Ubuntu-mirror först i deb822-sources (med fallback)
+  replace:
+    path: "{{ item.path }}"
+    regexp: '^(URIs:\s+)https?://archive\.ubuntu\.com/ubuntu/?\s*$'
+    replace: '\1http://se.archive.ubuntu.com/ubuntu/ http://archive.ubuntu.com/ubuntu/'
+  loop: "{{ _apt_sources_files.files | selectattr('path', 'match', '.*\\.sources$') | list }}"
+  loop_control:
+    label: "{{ item.path }}"
+  notify: Uppdatera apt-cache
+
+- name: Använd svensk Ubuntu-mirror i klassisk sources.list
+  replace:
+    path: "{{ item.path }}"
+    regexp: '(?<![\w.])archive\.ubuntu\.com'
+    replace: 'se.archive.ubuntu.com'
+  loop: "{{ _apt_sources_files.files | rejectattr('path', 'match', '.*\\.sources$') | list }}"
+  loop_control:
+    label: "{{ item.path }}"
+  notify: Uppdatera apt-cache
+
+- name: Kör väntande apt-cache-uppdatering nu (innan första apt-install)
+  meta: flush_handlers
+
 - name: Installera beroenden
   apt:
     name:
