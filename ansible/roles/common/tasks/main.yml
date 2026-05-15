@@ -11,14 +11,14 @@
   retries: 10
   delay: 15
 
-- name: Kontrollera om ubuntu-vg finns och har ej allokerat utrymme
-  command: vgs --noheadings -o vg_free --units b --nosuffix ubuntu-vg
-  register: _vg_free
+- name: Kontrollera om ubuntu-vg finns
+  command: vgs ubuntu-vg
+  register: _vg_exists
   changed_when: false
   failed_when: false
 
 - name: Utöka disk till full storlek (körs bara på VM-noder med ubuntu-vg)
-  when: _vg_free.rc == 0 and (_vg_free.stdout | trim | int) > 0
+  when: _vg_exists.rc == 0
   block:
     - name: Hitta LVM physical volume
       command: pvs --noheadings -o pv_name
