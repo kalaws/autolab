@@ -45,6 +45,9 @@ terraform.rc
 *ed25519
 *ed25519.pub
 
+# Tillfällig IP-cache (genereras av Terraform bootstrap)
+.control_ip
+
 # Hämtade certifikat och CSR:er (genereras av Ansible)
 pki/playbooks/fetched/
 

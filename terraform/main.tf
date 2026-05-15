@@ -98,6 +98,7 @@ resource "terraform_data" "bootstrap_control" {
         CONTROL_IP=$(resolve_proxmox_ip "$VMID")
         [ -z "$CONTROL_IP" ] && sleep 5
       done
+      echo "$CONTROL_IP" > "${path.module}/.control_ip"  # Spara ansible control IP för återanvändning i andra bootstrap-script.
       echo "Ansible control IP: $CONTROL_IP"
 
       ROOT_SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
@@ -218,13 +219,7 @@ resource "terraform_data" "bootstrap_vault" {
       VAULT_GW=$(ssh $SSH_OPTS root@$VAULT_IP "ip route show default | awk '{print \$3; exit}'")
       ssh $SSH_OPTS root@$VAULT_IP "echo 'nameserver $VAULT_GW' > /etc/resolv.conf"
 
-      CONTROL_VMID="${module.ansible.vm_id}"
-      echo "Hämtar ansible control IP från Proxmox API (VMID=$CONTROL_VMID)..."
-      CONTROL_IP=""
-      until [ -n "$CONTROL_IP" ]; do
-        CONTROL_IP=$(resolve_proxmox_ip "$CONTROL_VMID")
-        [ -z "$CONTROL_IP" ] && sleep 5
-      done
+      CONTROL_IP=$(cat "${path.module}/.control_ip")
       echo "Ansible control IP: $CONTROL_IP"
 
       echo "Skapar bootstrap-användare på vault..."
@@ -368,16 +363,8 @@ resource "terraform_data" "write_inventory" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      # resolve_proxmox_ip <vmid> — frågar Proxmox API om aktuell IP för en CT (kräver PROXMOX_VE_API_TOKEN)
-      source "${path.module}/scripts/proxmox_helpers.sh"
-
-      VMID="${module.ansible.vm_id}"
-      echo "Hämtar ansible control IP från Proxmox API (VMID=$VMID)..."
-      CONTROL_IP=""
-      until [ -n "$CONTROL_IP" ]; do
-        CONTROL_IP=$(resolve_proxmox_ip "$VMID")
-        [ -z "$CONTROL_IP" ] && sleep 5
-      done
+      CONTROL_IP=$(cat "${path.module}/.control_ip")
+      echo "Ansible control IP: $CONTROL_IP"
 
       CONTROL_SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 -o BatchMode=yes -i ${local_sensitive_file.terraform_ssh_private.filename}"
 
