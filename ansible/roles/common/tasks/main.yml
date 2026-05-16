@@ -1,25 +1,30 @@
 ---
-- name: Vänta på att unattended-upgrades och apt-låset släpps
-  shell: |
-    while pgrep -x unattended-upgr >/dev/null 2>&1 \
-       || fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 \
-       || fuser /var/lib/dpkg/lock >/dev/null 2>&1 \
-       || fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do
-      sleep 5
-    done
-  changed_when: false
-  timeout: 1800
-
-- name: Inaktivera apt-daily-timers under provisionering så de inte triggar mitt i körningen
+- name: Stoppa och maskera unattended-upgrades + apt-daily
   systemd:
     name: "{{ item }}"
-    enabled: false
     state: stopped
     masked: true
   loop:
+    - unattended-upgrades.service
+    - apt-daily.service
+    - apt-daily-upgrade.service
     - apt-daily.timer
     - apt-daily-upgrade.timer
   failed_when: false
+
+- name: Vänta på att alla apt/dpkg-lås släpps
+  shell: |
+    while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 \
+       || fuser /var/lib/dpkg/lock >/dev/null 2>&1 \
+       || fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do
+      sleep 2
+    done
+  changed_when: false
+  timeout: 600
+
+- name: Reparera ev. halvkonfigurerad dpkg-state
+  command: dpkg --configure -a
+  changed_when: false
 
 - name: Hitta apt sources-filer
   find:
