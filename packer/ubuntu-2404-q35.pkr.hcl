@@ -152,7 +152,7 @@ build {
   # Sätt DHCP som standard i Proxmox cloud-init för templaten
   provisioner "shell-local" {
     inline = [
-      "curl -s -k -X PUT '${var.proxmox_url}/nodes/${var.proxmox_node}/qemu/${var.vm_id}/config' -H 'Authorization: PVEAPIToken=${var.proxmox_token_id}=${var.proxmox_token_secret}' -d 'ipconfig0=ip=dhcp'"
+      "curl -s -k -X PUT '${var.proxmox_url}/nodes/${var.proxmox_node}/qemu/${var.vm_id}/config' -H 'Authorization: PVEAPIToken=${var.proxmox_token_id}=${var.proxmox_token_secret}' --data-urlencode 'ipconfig0=ip=dhcp'"
     ]
   }
 }
