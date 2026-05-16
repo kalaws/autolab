@@ -6,25 +6,22 @@
   roles:
     - common
 
-- name: Bootstrap HashiCorp Vault
-  hosts: vault
+- name: Bootstrap Vault och k8s-prerequisites parallellt
+  hosts: vault:control_plane:workers
   become: true
+  strategy: free
   roles:
     - common
-    - vault
+    - role: vault
+      when: "'vault' in group_names"
+    - role: k8s-common
+      when: "'control_plane' in group_names or 'workers' in group_names"
 
 - name: Konfigurera Vault AppRole för k8s
   hosts: vault
   become: true
   roles:
     - vault-config
-
-- name: Common k8s prerequisites
-  hosts: control_plane:workers
-  become: true
-  roles:
-    - common
-    - k8s-common
 
 - name: Initialize control plane
   hosts: control_plane
