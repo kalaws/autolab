@@ -4,6 +4,7 @@
     name: [gpg, curl]
     state: present
     update_cache: true
+    lock_timeout: 300
   register: _apt
   until: _apt is not failed
   retries: 10
@@ -32,6 +33,7 @@
     name: vault
     state: present
     update_cache: true
+    lock_timeout: 300
   register: _apt
   until: _apt is not failed
   retries: 5

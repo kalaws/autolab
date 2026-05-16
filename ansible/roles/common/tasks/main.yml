@@ -41,6 +41,7 @@
       - cloud-guest-utils
     state: present
     update_cache: false
+    lock_timeout: 300
   register: _apt
   until: _apt is not failed
   retries: 10

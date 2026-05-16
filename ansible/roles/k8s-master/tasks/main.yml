@@ -66,6 +66,7 @@
       - docker-ce-cli
     state: present
     update_cache: false
+    lock_timeout: 300
   register: _apt
   until: _apt is not failed
   retries: 10
@@ -84,6 +85,7 @@
       - python3-kubernetes
     state: present
     update_cache: false
+    lock_timeout: 300
   register: _apt
   until: _apt is not failed
   retries: 10

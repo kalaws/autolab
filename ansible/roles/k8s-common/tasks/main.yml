@@ -17,6 +17,7 @@
       - gnupg
     state: present
     update_cache: true
+    lock_timeout: 300
   register: _apt
   until: _apt is not failed
   retries: 10
@@ -40,6 +41,11 @@
       - kubectl
     state: present
     update_cache: true
+    lock_timeout: 300
+  register: _apt
+  until: _apt is not failed
+  retries: 5
+  delay: 15
 
 - name: Lås Kubernetes-paket till nuvarande version
   dpkg_selections:
@@ -87,6 +93,11 @@
     name: containerd
     state: present
     update_cache: true
+    lock_timeout: 300
+  register: _apt
+  until: _apt is not failed
+  retries: 5
+  delay: 15
 
 - name: Skapa katalog för containerd-konfiguration
   file:
