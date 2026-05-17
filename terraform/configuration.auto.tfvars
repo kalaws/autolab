@@ -1,4 +1,4 @@
-github_branch = "10-project-init"
+github_branch = "master"
 github_owner  = "kalaws"
 
 node_name       = "pve"
