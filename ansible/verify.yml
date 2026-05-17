@@ -2,6 +2,7 @@
 - name: Verifiera Kubernetes-kluster
   hosts: control_plane
   become: true
+  tags: cluster
   vars:
     kubeconfig: /home/ansible/.kube/config
 
@@ -52,6 +53,14 @@
       loop_control:
         label: "{{ item.name }}"
 
+    - name: Kontrollera API-server readiness
+      command: kubectl get --raw=/readyz
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      register: api_readyz
+      changed_when: false
+      failed_when: api_readyz.stdout != "ok"
+
     - name: Kontrollera att kube-system-poddar är Running
       command: >
         kubectl get pods -n kube-system
@@ -67,6 +76,23 @@
         that: not_running.stdout == ""
         fail_msg: "Följande poddar i kube-system är inte Running:\n{{ not_running.stdout }}"
         success_msg: "Alla kube-system-poddar kör"
+
+    - name: Hämta Calico-daemonset
+      command: kubectl -n kube-system get daemonset calico-node -o json
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      register: calico_ds
+      changed_when: false
+
+    - name: Säkerställ att Calico är utrullat på alla noder
+      vars:
+        ds_status: "{{ (calico_ds.stdout | from_json).status }}"
+      assert:
+        that:
+          - ds_status.desiredNumberScheduled | int > 0
+          - ds_status.numberReady | default(0) | int == ds_status.desiredNumberScheduled | int
+        fail_msg: "Calico ej fullt utrullat: {{ ds_status.numberReady | default(0) }}/{{ ds_status.desiredNumberScheduled }}"
+        success_msg: "Calico utrullat på {{ ds_status.numberReady }}/{{ ds_status.desiredNumberScheduled }} noder"
 
     - name: Visa nodöversikt
       command: kubectl get nodes -o wide
