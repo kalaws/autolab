@@ -104,3 +104,49 @@
     - name: Skriv ut nodöversikt
       debug:
         msg: "{{ nodes_wide.stdout_lines }}"
+
+- name: Verifiera Vault
+  hosts: vault
+  become: true
+  tags: vault
+  vars:
+    vault_port: 8200
+    vault_role_id_file: /home/ansible/.vault-role-id
+    vault_secret_id_file: /home/ansible/.vault-secret-id
+
+  tasks:
+    - name: Hämta Vault health
+      uri:
+        url: "http://127.0.0.1:{{ vault_port }}/v1/sys/health"
+        status_code: [200, 429, 472, 473, 501, 503]
+      register: vault_health
+
+    - name: Säkerställ att Vault är initialiserat och unsealed
+      assert:
+        that:
+          - vault_health.json.initialized
+          - not vault_health.json.sealed
+        fail_msg: "Vault är inte unsealed: initialized={{ vault_health.json.initialized }}, sealed={{ vault_health.json.sealed }}"
+        success_msg: "Vault är initialiserat och unsealed"
+
+    - name: Kontrollera att AppRole-credentials finns på control node
+      stat:
+        path: "{{ item }}"
+      delegate_to: localhost
+      become: true
+      become_user: ansible
+      register: approle_files
+      loop:
+        - "{{ vault_role_id_file }}"
+        - "{{ vault_secret_id_file }}"
+      run_once: true
+
+    - name: Säkerställ att AppRole-filerna existerar
+      assert:
+        that: item.stat.exists
+        fail_msg: "Saknar fil: {{ item.item }}"
+        success_msg: "{{ item.item }} finns"
+      loop: "{{ approle_files.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+      run_once: true
