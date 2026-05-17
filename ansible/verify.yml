@@ -150,3 +150,84 @@
       loop_control:
         label: "{{ item.item }}"
       run_once: true
+
+- name: Verifiera sårbar webapp
+  hosts: control_plane
+  become: true
+  tags: vulnerable
+  vars:
+    kubeconfig: /home/ansible/.kube/config
+    webapp_namespace: default
+    webapp_service: webapp-service
+    webapp_node_port: 30500
+    vault_k8s_secret_name: vault-dockerhub
+    insecure_secret_name: db-credentials
+
+  tasks:
+    - name: Hämta webapp-deployment
+      command: kubectl -n {{ webapp_namespace }} get deployment webapp -o json
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      register: webapp_deploy
+      changed_when: false
+
+    - name: Säkerställ att alla webapp-replicas är ready
+      vars:
+        deploy: "{{ webapp_deploy.stdout | from_json }}"
+      assert:
+        that:
+          - deploy.status.readyReplicas | default(0) | int == deploy.spec.replicas | int
+        fail_msg: "webapp har {{ deploy.status.readyReplicas | default(0) }}/{{ deploy.spec.replicas }} ready"
+        success_msg: "webapp har {{ deploy.spec.replicas }}/{{ deploy.spec.replicas }} ready"
+
+    - name: Hämta webapp endpoints
+      command: kubectl -n {{ webapp_namespace }} get endpoints {{ webapp_service }} -o json
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      register: webapp_ep
+      changed_when: false
+
+    - name: Säkerställ att webapp-service har endpoints
+      vars:
+        addresses: "{{ (webapp_ep.stdout | from_json).subsets | default([]) | map(attribute='addresses', default=[]) | flatten }}"
+      assert:
+        that: addresses | length > 0
+        fail_msg: "{{ webapp_service }} saknar endpoints"
+        success_msg: "{{ webapp_service }} har {{ addresses | length }} endpoints"
+
+    - name: Kontrollera att vulnerable-sa existerar
+      command: kubectl -n {{ webapp_namespace }} get sa vulnerable-sa
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      changed_when: false
+
+    - name: Kontrollera att ClusterRoleBinding vulnerable-sa-admin existerar
+      command: kubectl get clusterrolebinding vulnerable-sa-admin
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      changed_when: false
+
+    - name: Kontrollera att dockerhub-secret från Vault finns
+      command: kubectl -n {{ webapp_namespace }} get secret {{ vault_k8s_secret_name }}
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      changed_when: false
+
+    - name: Kontrollera att insecure-secret finns
+      command: kubectl -n {{ webapp_namespace }} get secret {{ insecure_secret_name }}
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      changed_when: false
+
+    - name: Anropa webapp via NodePort (end-to-end-rökprov)
+      uri:
+        url: "http://127.0.0.1:{{ webapp_node_port }}/"
+        status_code: 200
+      register: webapp_http
+      retries: 5
+      delay: 3
+      until: webapp_http.status == 200
+
+    - name: Bekräfta att webapp svarar
+      debug:
+        msg: "webapp svarar på NodePort {{ webapp_node_port }} (HTTP {{ webapp_http.status }})"
