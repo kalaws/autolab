@@ -1,9 +1,30 @@
 <mxfile host="app.diagrams.net">
   <diagram name="Sida-1" id="6bph6VPqUYR4DhC_4UM0">
-    <mxGraphModel dx="1627" dy="1133" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="1654" math="0" shadow="0">
+    <mxGraphModel dx="895" dy="623" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="1654" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
+        <mxCell id="uDNJTV9Zf2VghNZOuKmz-6" edge="1" parent="1" source="vniPk_IETI1rBDz9LC_p-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=1.023;entryY=0.502;entryDx=0;entryDy=0;entryPerimeter=0;" target="uDNJTV9Zf2VghNZOuKmz-1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="787" y="646" />
+              <mxPoint x="474" y="646" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="uDNJTV9Zf2VghNZOuKmz-5" edge="1" parent="1" source="vniPk_IETI1rBDz9LC_p-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.673;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="571" y="426" />
+              <mxPoint x="570" y="426" />
+              <mxPoint x="570" y="630" />
+            </Array>
+            <mxPoint x="469" y="630" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="uDNJTV9Zf2VghNZOuKmz-4" edge="1" parent="1" source="vniPk_IETI1rBDz9LC_p-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.499;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" target="uDNJTV9Zf2VghNZOuKmz-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <mxCell id="vniPk_IETI1rBDz9LC_p-4" edge="1" parent="1" source="bSIwzvymGikvmksSl5OG-30" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;endFill=0;startArrow=none;startFill=0;exitX=-0.019;exitY=0.55;exitDx=0;exitDy=0;exitPerimeter=0;">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
@@ -16,7 +37,7 @@
         <mxCell id="vniPk_IETI1rBDz9LC_p-5" parent="1" style="verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=none;fillColor=#00BEF2;shape=mxgraph.azure.virtual_machine;" value="K8S-worker-1" vertex="1">
           <mxGeometry height="60" width="75" x="750" y="293" as="geometry" />
         </mxCell>
-        <mxCell id="vniPk_IETI1rBDz9LC_p-6" parent="1" style="verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=none;fillColor=#00BEF2;shape=mxgraph.azure.virtual_machine;" value="&lt;div&gt;K8S-worker-2&lt;/div&gt;" vertex="1">
+        <mxCell id="vniPk_IETI1rBDz9LC_p-6" parent="1" style="verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=none;fillColor=#00BEF2;shape=mxgraph.azure.virtual_machine;" value="&lt;div&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;K8S-worker-2&lt;/span&gt;&lt;/div&gt;" vertex="1">
           <mxGeometry height="60" width="75" x="750" y="494" as="geometry" />
         </mxCell>
         <mxCell id="vniPk_IETI1rBDz9LC_p-8" parent="1" style="aspect=fixed;sketch=0;html=1;dashed=0;whitespace=wrap;verticalLabelPosition=bottom;verticalAlign=top;fillColor=#2875E2;strokeColor=#ffffff;points=[[0.005,0.63,0],[0.1,0.2,0],[0.9,0.2,0],[0.5,0,0],[0.995,0.63,0],[0.72,0.99,0],[0.5,1,0],[0.28,0.99,0]];shape=mxgraph.kubernetes.icon2;kubernetesLabel=1;prIcon=pod" value="Sårbar&lt;div&gt;Flask&lt;/div&gt;" vertex="1">
@@ -109,6 +130,17 @@
         <mxCell id="bSIwzvymGikvmksSl5OG-5" parent="1" style="image;html=1;image=img/lib/clip_art/computers/Workstation_128x128.png" value="&lt;div&gt;Terraform&lt;/div&gt;&lt;div&gt;ControlHost&lt;/div&gt;" vertex="1">
           <mxGeometry height="80" width="80" x="85" y="357" as="geometry" />
         </mxCell>
+        <mxCell id="uDNJTV9Zf2VghNZOuKmz-3" edge="1" parent="1" source="vniPk_IETI1rBDz9LC_p-7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.104;entryY=0.195;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0.25;exitY=1;exitDx=0;exitDy=0;" target="uDNJTV9Zf2VghNZOuKmz-1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="329" y="418" />
+              <mxPoint x="330" y="418" />
+              <mxPoint x="330" y="630" />
+            </Array>
+            <mxPoint x="330" y="418" as="sourcePoint" />
+            <mxPoint x="430" y="630" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
         <mxCell id="vniPk_IETI1rBDz9LC_p-7" parent="1" style="image;aspect=fixed;perimeter=ellipsePerimeter;html=1;align=center;fontSize=12;verticalAlign=top;fontColor=#364149;shadow=0;dashed=0;image=img/lib/cumulus/container.svg;" value="Ansible" vertex="1">
           <mxGeometry height="60" width="67.5" x="310" y="367" as="geometry" />
         </mxCell>
@@ -186,6 +218,21 @@
         </mxCell>
         <mxCell id="bSIwzvymGikvmksSl5OG-44" edge="1" parent="1" source="vniPk_IETI1rBDz9LC_p-23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=-0.005;entryY=0.383;entryDx=0;entryDy=0;entryPerimeter=0;" target="vniPk_IETI1rBDz9LC_p-14">
           <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="uDNJTV9Zf2VghNZOuKmz-1" parent="1" style="points=[];aspect=fixed;html=1;align=center;shadow=0;dashed=0;fillColor=#FF6A00;strokeColor=none;shape=mxgraph.alibaba_cloud.dns_privatezone_02;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;" value="Existerande lokal DNS&lt;br&gt;(ej krav)" vertex="1">
+          <mxGeometry height="52.2" width="49.8" x="422.85" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="uDNJTV9Zf2VghNZOuKmz-2" edge="1" parent="1" source="bSIwzvymGikvmksSl5OG-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=-0.017;entryY=0.517;entryDx=0;entryDy=0;entryPerimeter=0;" target="uDNJTV9Zf2VghNZOuKmz-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="uDNJTV9Zf2VghNZOuKmz-7" edge="1" parent="1" source="vniPk_IETI1rBDz9LC_p-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=1.035;entryY=0.767;entryDx=0;entryDy=0;entryPerimeter=0;" target="uDNJTV9Zf2VghNZOuKmz-1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="845" y="323" />
+              <mxPoint x="845" y="660" />
+            </Array>
+            <mxPoint x="480" y="660" as="targetPoint" />
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>
